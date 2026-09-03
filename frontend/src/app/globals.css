@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-fraunces: "Fraunces", Georgia, serif;
+  --font-inter: "Inter", system-ui, sans-serif;
+  --font-plex-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-parchment text-ink antialiased;
+  font-feature-settings: "ss01" on, "cv11" on;
+}
+
+::selection {
+  background: #c89b3c;
+  color: #12172a;
+}
+
+/* Passbook-style ledger texture used behind the hero + a few signature cards */
+.ledger-texture {
+  background-image: repeating-linear-gradient(180deg, transparent, transparent 27px, rgba(18, 23, 42, 0.05) 28px);
+}
+
+.glass-panel {
+  background: rgba(255, 253, 248, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.glass-panel-dark {
+  background: rgba(27, 34, 56, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.skeleton {
+  @apply relative overflow-hidden bg-slate-200/60 rounded-lg;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  background-size: 500px 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(140, 147, 171, 0.4);
+  border-radius: 999px;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

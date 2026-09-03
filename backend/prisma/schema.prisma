@@ -1,0 +1,307 @@
+// ============================================================
+// PayNest — Prisma Schema
+// A normalized, production-grade data model for a school-wide
+// digital wallet & tuck-shop settlement system.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------
+
+enum Role {
+  DEVELOPER
+  ADMIN // Principal / School Admin
+  ACCOUNTANT
+  HOUSEMASTER
+  STUDENT
+  SELLER // Tuck Shop Seller
+}
+
+enum SchoolStatus {
+  PENDING_VERIFICATION // awaiting developer approval
+  CODE_SENT // developer approved, code emailed, awaiting entry
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum StaffApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TransactionType {
+  DEPOSIT // Accountant/Housemaster credits a student
+  PURCHASE // Seller deducts from student, credits seller
+  ADJUSTMENT // manual correction by admin/developer
+  REVERSAL
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REVERSED
+}
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  SCHOOL_REGISTERED
+  SCHOOL_APPROVED
+  SCHOOL_REJECTED
+  SCHOOL_VERIFIED
+  SCHOOL_DELETED
+  SCHOOL_RESTORED
+  SCHOOL_PURGED
+  STAFF_REGISTERED
+  STAFF_APPROVED
+  STAFF_REJECTED
+  STAFF_DELETED
+  STUDENT_CREATED
+  WALLET_CREDITED
+  WALLET_DEBITED
+  PIN_VIEWED
+  HOUSEMASTER_PASSWORD_CHANGED
+  SETTINGS_UPDATED
+}
+
+// ------------------------------------------------------------
+// SCHOOL
+// ------------------------------------------------------------
+
+model School {
+  id                  String       @id @default(uuid())
+  name                String
+  email               String       @unique
+  status               SchoolStatus @default(PENDING_VERIFICATION)
+
+  // Verification workflow
+  verificationCode    String? // hashed OTP sent to school email
+  verificationExpires DateTime?
+
+  // Shared housemaster credential (auto-generated on approval)
+  housemasterPasswordHash String?
+
+  // Registrant (principal / head of school) details captured at signup
+  registrantName       String
+  registrantDesignation String
+  registrantUsername   String       @unique
+
+  users               User[]
+  students            Student[]
+  transactions        Transaction[]
+  auditLogs           AuditLog[]
+  verificationRequest VerificationRequest?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Soft-delete: the Developer's "delete school" action sets this instead of removing the row,
+  // so an accidental deletion can always be undone. All related users/students/transactions stay
+  // fully intact — nothing is touched until an explicit, separately-confirmed permanent purge.
+  deletedAt DateTime?
+
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model VerificationRequest {
+  id          String   @id @default(uuid())
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId    String   @unique
+  reviewedBy  String? // developer id
+  reviewedAt  DateTime?
+  status      StaffApprovalStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([status])
+}
+
+// ------------------------------------------------------------
+// USER (Developer, Admin, Accountant, Housemaster, Seller)
+// Students are modeled separately (see Student) since they
+// authenticate with Admission Number + PIN rather than a
+// username/password pair, and never carry a Role of STUDENT
+// through this table.
+// ------------------------------------------------------------
+
+model User {
+  id           String  @id @default(uuid())
+  role         Role
+  fullName     String
+  email        String? @unique
+  phone        String?
+  username     String? @unique
+  passwordHash String? // null for HOUSEMASTER (uses school shared password)
+
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String?
+
+  approvalStatus StaffApprovalStatus @default(APPROVED) // ADMIN/DEVELOPER auto-approved; ACCOUNTANT/SELLER need approval
+  isActive       Boolean             @default(true)
+
+  walletBalance Decimal @default(0) @db.Decimal(12, 2) // used by SELLER
+
+  refreshTokens   RefreshToken[]
+  createdStudents Student[]        @relation("StudentCreatedBy")
+  creditsGiven    Transaction[]    @relation("TransactionCreatedByUser")
+  auditLogs       AuditLog[]
+  failedLogins    FailedLogin[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId, role])
+  @@index([email])
+  @@index([username])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  studentId String?
+  student   Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([studentId])
+}
+
+// ------------------------------------------------------------
+// STUDENT
+// ------------------------------------------------------------
+
+model Student {
+  id              String  @id @default(uuid())
+  fullName        String
+  admissionNumber String
+  className       String
+  parentName      String
+  parentPhone     String
+  parentEmail     String
+  pinHash         String? // 4-6 digit PIN, bcrypt-hashed — used for authentication. Null until the
+                          // student's first tuck shop purchase, which is when they set it.
+  pinEncrypted    String? // AES-256-GCM encrypted PIN — decryptable only via Admin/Housemaster "view PIN"
+                          // (audit-logged), for lost-PIN recovery. Null until the PIN is first set.
+
+  walletBalance Decimal @default(0) @db.Decimal(12, 2)
+
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String
+
+  createdBy   User?   @relation("StudentCreatedBy", fields: [createdById], references: [id])
+  createdById String?
+
+  transactionsAsSender   Transaction[]  @relation("TransactionSenderStudent")
+  transactionsAsReceiver Transaction[]  @relation("TransactionReceiverStudent")
+  refreshTokens          RefreshToken[]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolId, admissionNumber])
+  @@index([schoolId])
+  @@index([admissionNumber])
+}
+
+// ------------------------------------------------------------
+// TRANSACTION LEDGER
+// Party references are polymorphic-by-column: exactly one of
+// each {Sender, Receiver} pair (user vs student) is populated,
+// enforced at the service layer.
+// ------------------------------------------------------------
+
+model Transaction {
+  id          String            @id @default(uuid())
+  type        TransactionType
+  status      TransactionStatus @default(SUCCESS)
+  amount      Decimal           @db.Decimal(12, 2)
+  description String?
+
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String
+
+  senderStudent     Student? @relation("TransactionSenderStudent", fields: [senderStudentId], references: [id])
+  senderStudentId   String?
+  receiverStudent   Student? @relation("TransactionReceiverStudent", fields: [receiverStudentId], references: [id])
+  receiverStudentId String?
+
+  // Seller wallet, when this txn is a PURCHASE settlement leg
+  receiverUserId String?
+
+  createdBy   User?  @relation("TransactionCreatedByUser", fields: [createdById], references: [id])
+  createdById String?
+  createdByRole Role
+
+  items String? // JSON-encoded list of purchased item names (PURCHASE only)
+  reference String @unique @default(uuid())
+
+  createdAt DateTime @default(now())
+
+  @@index([schoolId, createdAt])
+  @@index([senderStudentId])
+  @@index([receiverStudentId])
+  @@index([type])
+}
+
+// ------------------------------------------------------------
+// AUDIT LOG
+// ------------------------------------------------------------
+
+model AuditLog {
+  id       String      @id @default(uuid())
+  action   AuditAction
+  detail   String?
+
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorId String?
+
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String?
+
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([schoolId, createdAt])
+  @@index([action])
+}
+
+model FailedLogin {
+  id        String   @id @default(uuid())
+  identifier String  // username/email/admission number attempted
+  role      Role?
+  ipAddress String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([identifier])
+  @@index([createdAt])
+}
+
+// ------------------------------------------------------------
+// SYSTEM SETTINGS (developer-managed, key/value)
+// ------------------------------------------------------------
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
