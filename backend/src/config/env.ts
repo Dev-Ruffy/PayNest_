@@ -22,15 +22,12 @@ const envSchema = z.object({
 
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
 
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.coerce.number().default(587),
-  SMTP_SECURE: z
-    .string()
-    .default("false")
-    .transform((v) => v === "true"),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  MAIL_FROM: z.string().default("PayNest <no-reply@paynest.app>"),
+  // Email is sent via Brevo's HTTPS API rather than SMTP — outbound SMTP
+  // (ports 25/465/587) is permanently blocked on Render's free tier and
+  // several other free hosting tiers, but a plain HTTPS API call isn't.
+  BREVO_API_KEY: z.string().optional(), // if unset, emails are logged instead of sent (local dev)
+  MAIL_FROM_NAME: z.string().default("PayNest"),
+  MAIL_FROM_EMAIL: z.string().email().default("no-reply@paynest.app"),
 
   PIN_ENCRYPTION_KEY: z
     .string()
