@@ -1,7 +1,7 @@
 # PayNest
 
 **The digital wallet built for schools.** PayNest replaces cash at the boarding-school tuck shop with
-secure, PIN-protected student wallets — funded through Housemasters and the school Accountant, and
+secure, PIN-protected student wallets, funded through Housemasters and the school Accountant, and
 spent safely without anyone carrying cash.
 
 This is a full-stack monorepo: a **Next.js 14 (App Router)** frontend and an **Express + TypeScript +
