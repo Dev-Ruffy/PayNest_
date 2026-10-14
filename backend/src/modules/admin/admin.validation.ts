@@ -20,3 +20,16 @@ export const auditLogQuerySchema = z.object({
     page: z.string().optional(),
   }),
 });
+
+export const updateCreditLimitsSchema = z.object({
+  body: z
+    .object({
+      creditPeriodType: z.enum(["TERM", "SESSION"]).nullable().optional(),
+      creditPeriodMaxAmount: z.coerce.number().positive().nullable().optional(),
+      dailySpendMaxAmount: z.coerce.number().positive().nullable().optional(),
+    })
+    .refine((data) => !!data.creditPeriodType === !!data.creditPeriodMaxAmount, {
+      message: "Choose both a period type and a maximum amount, or clear both",
+      path: ["creditPeriodMaxAmount"],
+    }),
+});

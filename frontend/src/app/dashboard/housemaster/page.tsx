@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { GraduationCap, History } from "lucide-react";
+import { GraduationCap, History, Layers } from "lucide-react";
 import { RequireRole } from "@/components/layout/RequireRole";
 import { DashboardShell, NavItem } from "@/components/layout/DashboardShell";
 import { StudentDirectoryTab } from "@/components/dashboard/shared/StudentDirectoryTab";
 import { TransactionsTable } from "@/components/dashboard/shared/TransactionsTable";
+import { BulkOrdersTab } from "@/components/dashboard/housemaster/BulkOrdersTab";
 
 const navItems: NavItem[] = [
   { id: "students", label: "Students", icon: GraduationCap },
+  { id: "bulk-orders", label: "Bulk Orders", icon: Layers },
   { id: "history", label: "Transactions", icon: History },
 ];
 
@@ -23,10 +25,10 @@ function HousemasterDashboardContent() {
           createEndpoint="/housemaster/students"
           creditEndpoint="/housemaster/credit"
           queryKeyPrefix="housemaster"
-          pinViewEndpointBase="/housemaster"
         />
       )}
-      {activeTab === "history" && <TransactionsTable endpoint="/housemaster/transactions" title="Your credited transactions" />}
+      {activeTab === "bulk-orders" && <BulkOrdersTab />}
+      {activeTab === "history" && <TransactionsTable endpoint="/housemaster/transactions" title="Your transactions" />}
     </DashboardShell>
   );
 }

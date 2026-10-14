@@ -5,15 +5,12 @@ import { ApiError } from "../../utils/ApiError";
 import { studentService } from "../student/student.service";
 import { authService } from "../auth/auth.service";
 import { transactionService } from "../transaction/transaction.service";
+import { productService } from "../product/product.service";
 
 export const housemasterController = {
   createStudent: asyncHandler(async (req, res) => {
     if (!req.auth?.schoolId) throw ApiError.forbidden();
-    const student = await authService.registerStudent({
-      ...req.body,
-      schoolId: req.auth.schoolId,
-      createdById: req.auth.id,
-    });
+    const student = await authService.registerStudent({ ...req.body, schoolId: req.auth.schoolId, createdById: req.auth.id });
     sendSuccess(res, student, "Student created.", 201);
   }),
 
@@ -21,8 +18,15 @@ export const housemasterController = {
     if (!req.auth?.schoolId) throw ApiError.forbidden();
     const search = req.query.search as string | undefined;
     const page = Number(req.query.page ?? 1);
-    const result = await studentService.listForSchool(req.auth.schoolId, search, page);
-    sendSuccess(res, result);
+    const pageSize = Math.min(Number(req.query.pageSize ?? 20), 200);
+    const className = req.query.className as string | undefined;
+    const house = req.query.house as string | undefined;
+    sendSuccess(res, await studentService.listForSchool(req.auth.schoolId, search, page, pageSize, { className, house }));
+  }),
+
+  studentGroupings: asyncHandler(async (req, res) => {
+    if (!req.auth?.schoolId) throw ApiError.forbidden();
+    sendSuccess(res, await studentService.listGroupings(req.auth.schoolId));
   }),
 
   creditStudent: asyncHandler(async (req, res) => {
@@ -41,13 +45,13 @@ export const housemasterController = {
   transactions: asyncHandler(async (req, res) => {
     if (!req.auth) throw ApiError.forbidden();
     const page = Number(req.query.page ?? 1);
-    const result = await transactionService.listCreatedBy(req.auth.id, page);
-    sendSuccess(res, result);
+    sendSuccess(res, await transactionService.listCreatedBy(req.auth.id, page));
   }),
 
-  viewStudentPin: asyncHandler(async (req, res) => {
+  // NOTE: PIN viewing was intentionally removed from Housemaster — Admin-only now.
+
+  listProducts: asyncHandler(async (req, res) => {
     if (!req.auth?.schoolId) throw ApiError.forbidden();
-    const result = await studentService.viewPin(req.auth.schoolId, req.params.studentId, req.auth.id);
-    sendSuccess(res, result);
+    sendSuccess(res, await productService.listActiveForSchool(req.auth.schoolId));
   }),
 };

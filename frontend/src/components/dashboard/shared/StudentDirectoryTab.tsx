@@ -111,6 +111,7 @@ export function StudentDirectoryTab({
             { header: "Name", accessor: (s) => s.fullName },
             { header: "Admission No.", accessor: (s) => <span className="font-mono text-xs">{s.admissionNumber}</span> },
             { header: "Class", accessor: (s) => s.className },
+            { header: "House", accessor: (s) => s.house ?? "—" },
             { header: "Balance", accessor: (s) => <span className="font-mono">{formatCurrency(s.walletBalance)}</span> },
             { header: "PIN", accessor: (s) => <Badge tone={s.hasPin ? "emerald" : "gold"}>{s.hasPin ? "Set" : "Not set yet"}</Badge> },
             { header: "Status", accessor: (s) => <Badge tone={s.isActive ? "emerald" : "slate"}>{s.isActive ? "Active" : "Inactive"}</Badge> },
@@ -154,6 +155,7 @@ export function StudentDirectoryTab({
           <Input placeholder="Full name" {...createForm.register("fullName")} error={createForm.formState.errors.fullName?.message} />
           <Input placeholder="Admission number" {...createForm.register("admissionNumber")} error={createForm.formState.errors.admissionNumber?.message} />
           <Input placeholder="Class" {...createForm.register("className")} error={createForm.formState.errors.className?.message} />
+          <Input placeholder="House (optional)" {...createForm.register("house")} error={createForm.formState.errors.house?.message} />
           <Input placeholder="Parent / guardian name" {...createForm.register("parentName")} error={createForm.formState.errors.parentName?.message} />
           <Input placeholder="Parent / guardian phone" {...createForm.register("parentPhone")} error={createForm.formState.errors.parentPhone?.message} />
           <Input placeholder="Parent / guardian email" type="email" {...createForm.register("parentEmail")} error={createForm.formState.errors.parentEmail?.message} />

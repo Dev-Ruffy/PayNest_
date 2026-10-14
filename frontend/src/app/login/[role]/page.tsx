@@ -30,7 +30,17 @@ const ROLE_META: Record<string, { label: string; endpoint: string; role: Role; c
   student: { label: "Student", endpoint: "/auth/login/student", role: "STUDENT", canSignUp: false },
 };
 
-function StaffOrAdminForm({ schoolId, meta }: { schoolId: string; meta: (typeof ROLE_META)[string] }) {
+function StaffOrAdminForm({
+  schoolId,
+  schoolName,
+  roleSlug,
+  meta,
+}: {
+  schoolId: string;
+  schoolName: string;
+  roleSlug: string;
+  meta: (typeof ROLE_META)[string];
+}) {
   const router = useRouter();
   const { setSession } = useAuth();
   const {
@@ -59,6 +69,14 @@ function StaffOrAdminForm({ schoolId, meta }: { schoolId: string; meta: (typeof 
       <div>
         <Label>Password</Label>
         <Input type="password" placeholder="••••••••" {...register("password")} error={errors.password?.message} />
+      </div>
+      <div className="-mt-1 text-right">
+        <Link
+          href={`/forgot-password?schoolId=${schoolId}&schoolName=${encodeURIComponent(schoolName)}&role=${roleSlug}`}
+          className="text-xs font-medium text-slate-500 underline underline-offset-2 hover:text-ink"
+        >
+          Forgot password?
+        </Link>
       </div>
       <Button type="submit" className="w-full" size="lg" isLoading={mutation.isPending}>
         Log in
@@ -173,7 +191,7 @@ function LoginContent() {
       {meta.role === "HOUSEMASTER" && <HousemasterForm schoolId={schoolId} />}
       {meta.role === "STUDENT" && <StudentForm schoolId={schoolId} />}
       {(meta.role === "ADMIN" || meta.role === "ACCOUNTANT" || meta.role === "SELLER") && (
-        <StaffOrAdminForm schoolId={schoolId} meta={meta} />
+        <StaffOrAdminForm schoolId={schoolId} schoolName={schoolName} roleSlug={params.role} meta={meta} />
       )}
 
       {meta.canSignUp && (

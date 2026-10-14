@@ -16,6 +16,7 @@ import { Input, Select } from "@/components/ui/Input";
 import { api, extractErrorMessage } from "@/lib/axios";
 import { formatDate, statusToTone } from "@/lib/utils";
 import { registerSchoolSchema, RegisterSchoolInput } from "@/lib/validation";
+import { CreditLimitFields } from "@/components/dashboard/shared/CreditLimitFields";
 
 interface SchoolRow {
   id: string;
@@ -212,6 +213,7 @@ export function SchoolsTab() {
           <Input placeholder="School email" type="email" {...register("schoolEmail")} error={errors.schoolEmail?.message} />
           <Input placeholder="Admin username" {...register("username")} error={errors.username?.message} />
           <Input placeholder="Admin password" type="password" {...register("password")} error={errors.password?.message} />
+          <CreditLimitFields register={register} errors={errors} />
           <Button type="submit" className="w-full" isLoading={createMutation.isPending}>Create</Button>
         </form>
       </Modal>

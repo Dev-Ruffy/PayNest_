@@ -134,9 +134,55 @@ export const adminService = {
   async getSchoolSettings(schoolId: string) {
     const school = await prisma.school.findUnique({
       where: { id: schoolId },
-      select: { id: true, name: true, email: true, status: true, registrantName: true, registrantDesignation: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        status: true,
+        registrantName: true,
+        registrantDesignation: true,
+        createdAt: true,
+        creditPeriodType: true,
+        creditPeriodMaxAmount: true,
+        currentPeriodStartedAt: true,
+        dailySpendMaxAmount: true,
+      },
     });
     if (!school) throw ApiError.notFound("School not found.");
     return school;
+  },
+
+  async updateCreditLimits(params: {
+    schoolId: string;
+    actorId: string;
+    creditPeriodType?: "TERM" | "SESSION" | null;
+    creditPeriodMaxAmount?: number | null;
+    dailySpendMaxAmount?: number | null;
+  }) {
+    const hasPeriodType = params.creditPeriodType !== undefined && params.creditPeriodType !== null;
+    const hasPeriodMax = params.creditPeriodMaxAmount !== undefined && params.creditPeriodMaxAmount !== null;
+    if (hasPeriodType !== hasPeriodMax) {
+      throw ApiError.badRequest("Choose both a period type and a maximum amount, or clear both.");
+    }
+
+    const school = await prisma.school.update({
+      where: { id: params.schoolId },
+      data: {
+        creditPeriodType: params.creditPeriodType ?? null,
+        creditPeriodMaxAmount: params.creditPeriodMaxAmount ?? null,
+        dailySpendMaxAmount: params.dailySpendMaxAmount ?? null,
+        ...(hasPeriodMax ? { currentPeriodStartedAt: new Date() } : { currentPeriodStartedAt: null }),
+      },
+    });
+
+    await recordAudit({ action: "CREDIT_LIMIT_UPDATED", actorId: params.actorId, schoolId: params.schoolId });
+    return school;
+  },
+
+  /** Marks "a new term/session has begun" — resets the window the period credit limit counts within. */
+  async resetPeriod(schoolId: string, actorId: string) {
+    const school = await prisma.school.update({ where: { id: schoolId }, data: { currentPeriodStartedAt: new Date() } });
+    await recordAudit({ action: "PERIOD_RESET", actorId, schoolId });
+    return { message: "New period started. Credit limits now count from today.", currentPeriodStartedAt: school.currentPeriodStartedAt };
   },
 };

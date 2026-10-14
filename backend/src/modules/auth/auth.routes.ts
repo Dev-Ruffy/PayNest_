@@ -10,6 +10,8 @@ import {
   housemasterLoginSchema,
   studentLoginSchema,
   registerStaffSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from "./auth.validation";
 
 const router = Router();
@@ -30,5 +32,8 @@ router.post("/register/staff", validate(registerStaffSchema), authController.reg
 
 router.post("/refresh", authController.refresh);
 router.post("/logout", authController.logout);
+
+router.post("/forgot-password", authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
+router.post("/reset-password", authLimiter, validate(resetPasswordSchema), authController.resetPassword);
 
 export default router;

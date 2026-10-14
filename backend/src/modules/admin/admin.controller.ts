@@ -75,4 +75,19 @@ export const adminController = {
     const settings = await adminService.getSchoolSettings(schoolIdOf(req));
     sendSuccess(res, settings);
   }),
+
+  updateCreditLimits: asyncHandler(async (req, res) => {
+    const result = await adminService.updateCreditLimits({
+      schoolId: schoolIdOf(req),
+      actorId: req.auth!.id,
+      creditPeriodType: req.body.creditPeriodType,
+      creditPeriodMaxAmount: req.body.creditPeriodMaxAmount,
+      dailySpendMaxAmount: req.body.dailySpendMaxAmount,
+    });
+    sendSuccess(res, result, "Credit limits updated.");
+  }),
+
+  resetPeriod: asyncHandler(async (req, res) => {
+    sendSuccess(res, await adminService.resetPeriod(schoolIdOf(req), req.auth!.id));
+  }),
 };

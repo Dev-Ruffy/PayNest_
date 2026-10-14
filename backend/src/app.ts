@@ -18,6 +18,7 @@ import accountantRoutes from "./modules/accountant/accountant.routes";
 import housemasterRoutes from "./modules/housemaster/housemaster.routes";
 import studentRoutes from "./modules/student/student.routes";
 import sellerRoutes from "./modules/seller/seller.routes";
+import batchRoutes from "./modules/batch/batch.routes";
 
 export function createApp(): Application {
   const app = express();
@@ -58,6 +59,7 @@ export function createApp(): Application {
   app.use("/api/housemaster", housemasterRoutes);
   app.use("/api/student", studentRoutes);
   app.use("/api/seller", sellerRoutes);
+  app.use("/api/housemaster/batches", batchRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

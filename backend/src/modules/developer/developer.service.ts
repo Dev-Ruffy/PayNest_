@@ -103,6 +103,9 @@ export const developerService = {
     username: string;
     password: string;
     autoActivate?: boolean;
+    creditPeriodType?: "TERM" | "SESSION";
+    creditPeriodMaxAmount?: number;
+    dailySpendMaxAmount?: number;
   }) {
     const existing = await prisma.school.findUnique({ where: { email: input.schoolEmail } });
     if (existing) throw ApiError.conflict("A school with this email already exists.");
@@ -121,6 +124,10 @@ export const developerService = {
           registrantUsername: input.username,
           status: input.autoActivate ? SchoolStatus.ACTIVE : SchoolStatus.PENDING_VERIFICATION,
           housemasterPasswordHash: sharedPasswordHash,
+          creditPeriodType: input.creditPeriodType,
+          creditPeriodMaxAmount: input.creditPeriodMaxAmount,
+          dailySpendMaxAmount: input.dailySpendMaxAmount,
+          currentPeriodStartedAt: input.creditPeriodMaxAmount ? new Date() : undefined,
         },
       });
 

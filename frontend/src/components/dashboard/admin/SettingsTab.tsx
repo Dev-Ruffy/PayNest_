@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { api, extractErrorMessage } from "@/lib/axios";
 import { formatDate } from "@/lib/utils";
 import { changeHousemasterPasswordSchema, ChangeHousemasterPasswordInput } from "@/lib/validation";
+import { CreditLimitsCard } from "./CreditLimitsCard";
 
 interface SchoolSettings {
   id: string;
@@ -143,6 +144,9 @@ export function SettingsTab() {
           )}
         </CardContent>
       </Card>
+      <div className="lg:col-span-2">
+        <CreditLimitsCard />
+      </div>
     </div>
   );
 }

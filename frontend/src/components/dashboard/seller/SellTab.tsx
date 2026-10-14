@@ -5,9 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { Search, Wallet, CheckCircle2, Printer, Sparkles } from "lucide-react";
+import { Search, CheckCircle2, Printer, Sparkles } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
 import { Input, Label } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -16,6 +15,7 @@ import { api, extractErrorMessage } from "@/lib/axios";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { purchaseSchema, PurchaseInput, firstPurchaseSchema, FirstPurchaseInput } from "@/lib/validation";
 import { StudentSummary, PaginatedResult } from "@/types";
+import { SellerBalanceCard } from "./BalanceCard";
 
 interface Receipt {
   reference: string;
@@ -34,11 +34,6 @@ export function SellTab() {
   const [selectedStudent, setSelectedStudent] = useState<StudentSummary | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
 
-  const { data: wallet, isLoading: walletLoading } = useQuery({
-    queryKey: ["seller-wallet"],
-    queryFn: async () => (await api.get("/seller/wallet")).data.data as { walletBalance: string | number },
-  });
-
   const { data: students, isLoading: searchLoading } = useQuery({
     queryKey: ["seller-students", search],
     queryFn: async () => (await api.get("/seller/students", { params: { search } })).data.data as PaginatedResult<StudentSummary>,
@@ -52,6 +47,7 @@ export function SellTab() {
 
   const invalidateAfterSale = () => {
     queryClient.invalidateQueries({ queryKey: ["seller-wallet"] });
+    queryClient.invalidateQueries({ queryKey: ["seller-balance-history"] });
     queryClient.invalidateQueries({ queryKey: ["seller-transactions"] });
     queryClient.invalidateQueries({ queryKey: ["seller-students"] });
   };
@@ -76,13 +72,7 @@ export function SellTab() {
 
   return (
     <div className="space-y-5">
-      {walletLoading || !wallet ? (
-        <Skeleton className="h-28 w-full max-w-xs" />
-      ) : (
-        <div className="max-w-xs">
-          <StatCard label="Your wallet balance" value={formatCurrency(wallet.walletBalance)} icon={Wallet} tone="emerald" />
-        </div>
-      )}
+      <SellerBalanceCard />
 
       <Card>
         <CardHeader>

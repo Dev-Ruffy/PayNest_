@@ -10,6 +10,7 @@ import { Input, Label, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { api, extractErrorMessage } from "@/lib/axios";
 import { registerSchoolSchema, RegisterSchoolInput } from "@/lib/validation";
+import { CreditLimitFields } from "@/components/dashboard/shared/CreditLimitFields";
 
 export default function RegisterSchoolPage() {
   const router = useRouter();
@@ -66,6 +67,8 @@ export default function RegisterSchoolPage() {
           <Label>Choose a password</Label>
           <Input type="password" placeholder="••••••••" {...register("password")} error={errors.password?.message} />
         </div>
+
+        <CreditLimitFields register={register} errors={errors} />
 
         <Button type="submit" className="w-full" size="lg" isLoading={mutation.isPending}>
           Submit for review

@@ -12,8 +12,9 @@ router.use(requireAuth, requireRole(Role.HOUSEMASTER));
 
 router.post("/students", validate(createStudentSchema), housemasterController.createStudent);
 router.get("/students", housemasterController.listStudents);
-router.get("/students/:studentId/pin", housemasterController.viewStudentPin);
+router.get("/students/groupings", housemasterController.studentGroupings);
 router.post("/credit", validate(creditStudentSchema), housemasterController.creditStudent);
 router.get("/transactions", housemasterController.transactions);
+router.get("/products", housemasterController.listProducts);
 
 export default router;

@@ -5,6 +5,7 @@ import { ApiError } from "../../utils/ApiError";
 import { studentService } from "../student/student.service";
 import { authService } from "../auth/auth.service";
 import { transactionService } from "../transaction/transaction.service";
+import { prisma } from "../../config/db";
 
 export const accountantController = {
   createStudent: asyncHandler(async (req, res) => {
@@ -51,5 +52,15 @@ export const accountantController = {
     const page = Number(req.query.page ?? 1);
     const result = await transactionService.listForSchool(req.auth.schoolId, page);
     sendSuccess(res, result);
+  }),
+
+  /** The school's Seller daily balance history — one Seller per school, so no ID is needed. */
+  sellerBalanceHistory: asyncHandler(async (req, res) => {
+    if (!req.auth?.schoolId) throw ApiError.forbidden();
+    const seller = await prisma.user.findFirst({ where: { schoolId: req.auth.schoolId, role: Role.SELLER } });
+    if (!seller) throw ApiError.notFound("This school doesn't have a Tuck Shop Seller yet.");
+    const days = Number(req.query.days ?? 30);
+    const history = await transactionService.getSellerDailyBalanceHistory(seller.id, days);
+    sendSuccess(res, { sellerName: seller.fullName, history });
   }),
 };

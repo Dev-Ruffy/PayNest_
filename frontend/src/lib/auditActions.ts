@@ -19,6 +19,10 @@ import {
   KeyRound,
   Settings,
   Activity,
+  Layers,
+  Package,
+  Gauge,
+  CalendarClock,
 } from "lucide-react";
 
 export type AuditTone = "gold" | "emerald" | "brick" | "slate";
@@ -50,17 +54,28 @@ export const AUDIT_ACTION_META: Record<string, ActionMeta> = {
   PIN_VIEWED: { label: "PIN viewed", tone: "gold", icon: Eye, category: "Students & Money" },
   HOUSEMASTER_PASSWORD_CHANGED: { label: "Housemaster password changed", tone: "gold", icon: KeyRound, category: "Admin" },
   SETTINGS_UPDATED: { label: "Settings updated", tone: "slate", icon: Settings, category: "Admin" },
+  CREDIT_LIMIT_UPDATED: { label: "Spending limits updated", tone: "gold", icon: Gauge, category: "Admin" },
+  PERIOD_RESET: { label: "New term/session started", tone: "gold", icon: CalendarClock, category: "Admin" },
+  PASSWORD_RESET_REQUESTED: { label: "Password reset requested", tone: "gold", icon: KeyRound, category: "Authentication" },
+  PASSWORD_RESET_COMPLETED: { label: "Password reset completed", tone: "emerald", icon: KeyRound, category: "Authentication" },
+  BATCH_CREATED: { label: "Bulk order batch started", tone: "gold", icon: Layers, category: "Bulk orders & products" },
+  BATCH_CONFIRMED: { label: "Bulk order batch processed", tone: "emerald", icon: Layers, category: "Bulk orders & products" },
+  BATCH_CANCELLED: { label: "Bulk order batch discarded", tone: "slate", icon: Layers, category: "Bulk orders & products" },
+  PRODUCT_CREATED: { label: "Product added", tone: "gold", icon: Package, category: "Bulk orders & products" },
+  PRODUCT_UPDATED: { label: "Product updated", tone: "slate", icon: Package, category: "Bulk orders & products" },
+  PRODUCT_DEACTIVATED: { label: "Product deactivated", tone: "slate", icon: Package, category: "Bulk orders & products" },
 };
 
 export const FALLBACK_ACTION_META: ActionMeta = { label: "Activity", tone: "slate", icon: Activity, category: "Other" };
 
 /** Grouped for the filter dropdown's <optgroup> sections. */
 export const AUDIT_ACTION_CATEGORIES: { category: string; actions: string[] }[] = [
-  { category: "Authentication", actions: ["LOGIN_SUCCESS", "LOGIN_FAILED"] },
+  { category: "Authentication", actions: ["LOGIN_SUCCESS", "LOGIN_FAILED", "PASSWORD_RESET_REQUESTED", "PASSWORD_RESET_COMPLETED"] },
   { category: "Schools", actions: ["SCHOOL_REGISTERED", "SCHOOL_APPROVED", "SCHOOL_REJECTED", "SCHOOL_VERIFIED", "SCHOOL_DELETED", "SCHOOL_RESTORED", "SCHOOL_PURGED"] },
   { category: "Staff", actions: ["STAFF_REGISTERED", "STAFF_APPROVED", "STAFF_REJECTED", "STAFF_DELETED"] },
   { category: "Students & Money", actions: ["STUDENT_CREATED", "WALLET_CREDITED", "WALLET_DEBITED", "PIN_VIEWED"] },
-  { category: "Admin", actions: ["HOUSEMASTER_PASSWORD_CHANGED", "SETTINGS_UPDATED"] },
+  { category: "Admin", actions: ["HOUSEMASTER_PASSWORD_CHANGED", "SETTINGS_UPDATED", "CREDIT_LIMIT_UPDATED", "PERIOD_RESET"] },
+  { category: "Bulk orders & products", actions: ["BATCH_CREATED", "BATCH_CONFIRMED", "BATCH_CANCELLED", "PRODUCT_CREATED", "PRODUCT_UPDATED", "PRODUCT_DEACTIVATED"] },
 ];
 
 export const TONE_ICON_BG: Record<AuditTone, string> = {

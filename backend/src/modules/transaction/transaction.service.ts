@@ -5,10 +5,87 @@ import { compareValue, hashValue } from "../../utils/bcrypt.util";
 import { encryptSecret } from "../../utils/crypto.util";
 import { recordAudit } from "../../utils/auditLog.util";
 
+async function assertWithinCreditLimit(schoolId: string, studentId: string, amount: number) {
+  const school = await prisma.school.findUnique({
+    where: { id: schoolId },
+    select: { creditPeriodMaxAmount: true, currentPeriodStartedAt: true },
+  });
+  if (!school?.creditPeriodMaxAmount || !school.currentPeriodStartedAt) return;
+
+  const sum = await prisma.transaction.aggregate({
+    where: { receiverStudentId: studentId, type: TransactionType.DEPOSIT, createdAt: { gte: school.currentPeriodStartedAt } },
+    _sum: { amount: true },
+  });
+
+  const alreadyCredited = Number(sum._sum.amount ?? 0);
+  const max = Number(school.creditPeriodMaxAmount);
+  if (alreadyCredited + amount > max) {
+    const remaining = Math.max(0, max - alreadyCredited);
+    throw ApiError.badRequest(
+      `This would exceed the student's credit limit for the current period. Limit: ${max.toFixed(2)}, already credited: ${alreadyCredited.toFixed(2)}, room remaining: ${remaining.toFixed(2)}.`
+    );
+  }
+}
+
+async function assertWithinDailySpendLimit(schoolId: string, studentId: string, amount: number) {
+  const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { dailySpendMaxAmount: true } });
+  if (!school?.dailySpendMaxAmount) return;
+
+  const startOfDay = new Date();
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
+  const sum = await prisma.transaction.aggregate({
+    where: { senderStudentId: studentId, type: TransactionType.PURCHASE, createdAt: { gte: startOfDay } },
+    _sum: { amount: true },
+  });
+
+  const spentToday = Number(sum._sum.amount ?? 0);
+  const max = Number(school.dailySpendMaxAmount);
+  if (spentToday + amount > max) {
+    const remaining = Math.max(0, max - spentToday);
+    throw ApiError.badRequest(
+      `This would exceed the student's daily spending limit. Limit: ${max.toFixed(2)}, already spent today: ${spentToday.toFixed(2)}, room remaining: ${remaining.toFixed(2)}.`
+    );
+  }
+}
+
+async function settlePurchase(params: {
+  schoolId: string;
+  studentId: string;
+  currentBalance: number;
+  sellerId: string;
+  amount: number;
+  items: string[];
+  createdById: string;
+  createdByRole: Role;
+}) {
+  if (params.amount <= 0) throw ApiError.badRequest("Amount must be greater than zero.");
+  if (params.currentBalance < params.amount) throw ApiError.badRequest("Insufficient wallet balance.");
+
+  await assertWithinDailySpendLimit(params.schoolId, params.studentId, params.amount);
+
+  const [, , transaction] = await prisma.$transaction([
+    prisma.student.update({ where: { id: params.studentId }, data: { walletBalance: { decrement: params.amount } } }),
+    prisma.user.update({ where: { id: params.sellerId }, data: { walletBalance: { increment: params.amount } } }),
+    prisma.transaction.create({
+      data: {
+        type: TransactionType.PURCHASE,
+        amount: params.amount,
+        description: "Tuck shop purchase",
+        schoolId: params.schoolId,
+        senderStudentId: params.studentId,
+        receiverUserId: params.sellerId,
+        items: JSON.stringify(params.items),
+        createdById: params.createdById,
+        createdByRole: params.createdByRole,
+      },
+    }),
+  ]);
+
+  return transaction;
+}
+
 export const transactionService = {
-  /**
-   * Accountant or Housemaster credits a student's wallet after receiving cash.
-   */
   async creditStudent(params: {
     schoolId: string;
     studentId: string;
@@ -22,11 +99,10 @@ export const transactionService = {
     const student = await prisma.student.findFirst({ where: { id: params.studentId, schoolId: params.schoolId } });
     if (!student || !student.isActive) throw ApiError.notFound("Student not found at this school.");
 
+    await assertWithinCreditLimit(params.schoolId, params.studentId, params.amount);
+
     const [, transaction] = await prisma.$transaction([
-      prisma.student.update({
-        where: { id: student.id },
-        data: { walletBalance: { increment: params.amount } },
-      }),
+      prisma.student.update({ where: { id: student.id }, data: { walletBalance: { increment: params.amount } } }),
       prisma.transaction.create({
         data: {
           type: TransactionType.DEPOSIT,
@@ -51,16 +127,6 @@ export const transactionService = {
     return { transaction, walletBalance: updated?.walletBalance };
   },
 
-  /**
-   * Tuck Shop Seller purchase: verifies the student's PIN, deducts from the
-   * student wallet, and credits the seller's wallet in the same operation.
-   *
-   * Students no longer choose a PIN at account creation (their accounts are
-   * created by an Accountant/Housemaster without one). Instead, the PIN typed
-   * into a student's very first purchase becomes their permanent PIN — used
-   * for every purchase and login from then on. `isFirstPurchase` in the
-   * return value tells the caller which case just happened.
-   */
   async purchase(params: {
     schoolId: string;
     studentId: string;
@@ -69,15 +135,12 @@ export const transactionService = {
     items: string[];
     pin: string;
   }) {
-    if (params.amount <= 0) throw ApiError.badRequest("Amount must be greater than zero.");
-
     const student = await prisma.student.findFirst({ where: { id: params.studentId, schoolId: params.schoolId } });
     if (!student || !student.isActive) throw ApiError.notFound("Student not found at this school.");
 
     const isFirstPurchase = !student.pinHash;
 
     if (isFirstPurchase) {
-      // Nothing to verify yet — this purchase's PIN becomes the student's PIN going forward.
       const pinHash = await hashValue(params.pin);
       const pinEncrypted = encryptSecret(params.pin);
       await prisma.student.update({ where: { id: student.id }, data: { pinHash, pinEncrypted } });
@@ -86,33 +149,16 @@ export const transactionService = {
       if (!pinValid) throw ApiError.unauthorized("Incorrect student PIN.");
     }
 
-    if (Number(student.walletBalance) < params.amount) {
-      throw ApiError.badRequest("Insufficient wallet balance.");
-    }
-
-    const [, , transaction] = await prisma.$transaction([
-      prisma.student.update({
-        where: { id: student.id },
-        data: { walletBalance: { decrement: params.amount } },
-      }),
-      prisma.user.update({
-        where: { id: params.sellerId },
-        data: { walletBalance: { increment: params.amount } },
-      }),
-      prisma.transaction.create({
-        data: {
-          type: TransactionType.PURCHASE,
-          amount: params.amount,
-          description: "Tuck shop purchase",
-          schoolId: params.schoolId,
-          senderStudentId: student.id,
-          receiverUserId: params.sellerId,
-          items: JSON.stringify(params.items),
-          createdById: params.sellerId,
-          createdByRole: Role.SELLER,
-        },
-      }),
-    ]);
+    const transaction = await settlePurchase({
+      schoolId: params.schoolId,
+      studentId: student.id,
+      currentBalance: Number(student.walletBalance),
+      sellerId: params.sellerId,
+      amount: params.amount,
+      items: params.items,
+      createdById: params.sellerId,
+      createdByRole: Role.SELLER,
+    });
 
     await recordAudit({
       action: "WALLET_DEBITED",
@@ -141,6 +187,8 @@ export const transactionService = {
     };
   },
 
+  settlePurchase,
+
   async listForSchool(schoolId: string, page = 1, pageSize = 20) {
     const [items, total] = await Promise.all([
       prisma.transaction.findMany({
@@ -162,12 +210,7 @@ export const transactionService = {
   async listForStudent(studentId: string, page = 1, pageSize = 20) {
     const where = { OR: [{ senderStudentId: studentId }, { receiverStudentId: studentId }] };
     const [items, total] = await Promise.all([
-      prisma.transaction.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
+      prisma.transaction.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize }),
       prisma.transaction.count({ where }),
     ]);
     return { items, total, page, pageSize };
@@ -201,5 +244,49 @@ export const transactionService = {
       prisma.transaction.count({ where }),
     ]);
     return { items, total, page, pageSize };
+  },
+
+  async getSellerBalanceSummary(sellerId: string) {
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const [seller, todaySum] = await Promise.all([
+      prisma.user.findUnique({ where: { id: sellerId }, select: { walletBalance: true } }),
+      prisma.transaction.aggregate({
+        where: { receiverUserId: sellerId, type: TransactionType.PURCHASE, createdAt: { gte: startOfDay } },
+        _sum: { amount: true },
+        _count: true,
+      }),
+    ]);
+
+    return {
+      totalBalance: seller?.walletBalance ?? 0,
+      dailyProfit: todaySum._sum.amount ?? 0,
+      dailySaleCount: todaySum._count,
+    };
+  },
+
+  async getSellerDailyBalanceHistory(sellerId: string, days = 30) {
+    const since = new Date();
+    since.setUTCDate(since.getUTCDate() - days);
+    since.setUTCHours(0, 0, 0, 0);
+
+    const transactions = await prisma.transaction.findMany({
+      where: { receiverUserId: sellerId, type: TransactionType.PURCHASE, createdAt: { gte: since } },
+      select: { amount: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const byDay = new Map<string, { total: number; count: number }>();
+    for (const t of transactions) {
+      const day = t.createdAt.toISOString().slice(0, 10);
+      const existing = byDay.get(day) ?? { total: 0, count: 0 };
+      existing.total += Number(t.amount);
+      existing.count += 1;
+      byDay.set(day, existing);
+    }
+
+    return Array.from(byDay.entries())
+      .map(([date, stats]) => ({ date, total: stats.total, count: stats.count }))
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
   },
 };

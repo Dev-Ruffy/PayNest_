@@ -97,6 +97,22 @@ export const emailService = {
     );
   },
 
+  async sendPasswordResetCode(email: string, name: string, code: string) {
+    if (!env.BREVO_API_KEY) {
+      logger.info(`[No BREVO_API_KEY configured] Password reset code for ${email}: ${code}`);
+    }
+    await sendMail(
+      email,
+      "Your PayNest password reset code",
+      wrapper(
+        "Reset your password",
+        `<p>Hi ${name}, enter this code to reset your PayNest password:</p>
+         <p style="font-size:32px;font-weight:700;letter-spacing:6px;color:#C89B3C;">${code}</p>
+         <p>This code expires in 15 minutes. If you didn't request this, you can safely ignore this email.</p>`
+      )
+    );
+  },
+
   async notifySchoolApproved(schoolEmail: string, schoolName: string) {
     await sendMail(
       schoolEmail,

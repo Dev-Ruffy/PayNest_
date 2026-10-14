@@ -13,6 +13,7 @@ export const createStudentSchema = z.object({
     fullName: z.string().min(2),
     admissionNumber: z.string().min(1),
     className: z.string().min(1),
+    house: z.string().max(60).optional(),
     parentName: z.string().min(2),
     parentPhone: z.string().min(5),
     parentEmail: z.string().email(),

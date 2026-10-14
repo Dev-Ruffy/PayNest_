@@ -68,6 +68,14 @@ export const authController = {
     sendSuccess(res, result, "Registration submitted.", 201);
   }),
 
+  forgotPassword: asyncHandler(async (req, res) => {
+    sendSuccess(res, await authService.forgotPassword(req.body.schoolId, req.body.email));
+  }),
+
+  resetPassword: asyncHandler(async (req, res) => {
+    sendSuccess(res, await authService.resetPassword(req.body.schoolId, req.body.email, req.body.code, req.body.newPassword));
+  }),
+
   refresh: asyncHandler(async (req, res) => {
     const accessToken = await authService.refresh(res, req.cookies?.[authService.REFRESH_COOKIE_NAME]);
     sendSuccess(res, { accessToken }, "Session refreshed.");

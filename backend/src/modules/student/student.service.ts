@@ -12,6 +12,7 @@ export const studentService = {
         fullName: true,
         admissionNumber: true,
         className: true,
+        house: true,
         parentName: true,
         parentPhone: true,
         parentEmail: true,
@@ -24,10 +25,17 @@ export const studentService = {
     return student;
   },
 
-  /** Shared directory search used by Admin, Accountant and Housemaster dashboards. */
-  async listForSchool(schoolId: string, search?: string, page = 1, pageSize = 20) {
+  async listForSchool(
+    schoolId: string,
+    search?: string,
+    page = 1,
+    pageSize = 20,
+    filters?: { className?: string; house?: string }
+  ) {
     const where = {
       schoolId,
+      ...(filters?.className ? { className: filters.className } : {}),
+      ...(filters?.house ? { house: filters.house } : {}),
       ...(search
         ? {
             OR: [
@@ -50,21 +58,22 @@ export const studentService = {
           fullName: true,
           admissionNumber: true,
           className: true,
+          house: true,
           walletBalance: true,
           isActive: true,
           createdAt: true,
-          pinHash: true, // used only to compute hasPin below — the hash itself is never returned
+          pinHash: true,
         },
       }),
       prisma.student.count({ where }),
     ]);
 
-    // Never expose the raw hash to the client — only whether a PIN exists yet.
     interface RawStudentRow {
       id: string;
       fullName: string;
       admissionNumber: string;
       className: string;
+      house: string | null;
       walletBalance: unknown;
       isActive: boolean;
       createdAt: Date;
@@ -75,12 +84,17 @@ export const studentService = {
     return { items, total, page, pageSize };
   },
 
-  /**
-   * Reveals a student's PIN for lost-PIN recovery. Shared by Admin and
-   * Housemaster (both are trusted to help a student who's forgotten it) —
-   * kept in one place so the "PIN not set yet" case can't be forgotten by
-   * either caller. Every successful reveal is audit-logged.
-   */
+  async listGroupings(schoolId: string) {
+    const [classes, houses] = await Promise.all([
+      prisma.student.findMany({ where: { schoolId }, select: { className: true }, distinct: ["className"] }),
+      prisma.student.findMany({ where: { schoolId, house: { not: null } }, select: { house: true }, distinct: ["house"] }),
+    ]);
+    return {
+      classNames: classes.map((c: { className: string }) => c.className).sort(),
+      houses: houses.map((h: { house: string | null }) => h.house as string).sort(),
+    };
+  },
+
   async viewPin(schoolId: string, studentId: string, actorId: string) {
     const student = await prisma.student.findFirst({ where: { id: studentId, schoolId } });
     if (!student) throw ApiError.notFound("Student not found.");

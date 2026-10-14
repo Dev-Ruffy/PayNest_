@@ -4,7 +4,7 @@ import { requireAuth } from "../../middleware/auth.middleware";
 import { requireRole } from "../../middleware/role.middleware";
 import { validate } from "../../middleware/validate.middleware";
 import { adminController } from "./admin.controller";
-import { approvalDecisionSchema, changeHousemasterPasswordSchema } from "./admin.validation";
+import { approvalDecisionSchema, changeHousemasterPasswordSchema, updateCreditLimitsSchema } from "./admin.validation";
 
 const router = Router();
 
@@ -28,5 +28,7 @@ router.put("/housemaster-password", validate(changeHousemasterPasswordSchema), a
 
 router.get("/audit-logs", adminController.auditLogs);
 router.get("/settings", adminController.settings);
+router.put("/credit-limits", validate(updateCreditLimitsSchema), adminController.updateCreditLimits);
+router.post("/reset-period", adminController.resetPeriod);
 
 export default router;

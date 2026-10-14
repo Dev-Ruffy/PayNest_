@@ -4,7 +4,7 @@ import { prisma } from "../../config/db";
 import { env } from "../../config/env";
 import { ApiError } from "../../utils/ApiError";
 import { hashValue, compareValue } from "../../utils/bcrypt.util";
-import { generateToken } from "../../utils/generateCode.util";
+import { generateToken, generateNumericCode } from "../../utils/generateCode.util";
 import { signAccessToken } from "../../utils/jwt.util";
 import { emailService } from "../../utils/email.util";
 import { recordAudit } from "../../utils/auditLog.util";
@@ -62,6 +62,9 @@ export const authService = {
     schoolEmail: string;
     username: string;
     password: string;
+    creditPeriodType?: "TERM" | "SESSION";
+    creditPeriodMaxAmount?: number;
+    dailySpendMaxAmount?: number;
   }) {
     const existing = await prisma.school.findUnique({ where: { email: input.schoolEmail } });
     if (existing) throw ApiError.conflict("A school with this email is already registered.");
@@ -80,6 +83,10 @@ export const authService = {
           registrantDesignation: input.registrantDesignation,
           registrantUsername: input.username,
           status: SchoolStatus.PENDING_VERIFICATION,
+          creditPeriodType: input.creditPeriodType,
+          creditPeriodMaxAmount: input.creditPeriodMaxAmount,
+          dailySpendMaxAmount: input.dailySpendMaxAmount,
+          currentPeriodStartedAt: input.creditPeriodMaxAmount ? new Date() : undefined,
         },
       });
 
@@ -314,6 +321,7 @@ export const authService = {
     fullName: string;
     admissionNumber: string;
     className: string;
+    house?: string;
     parentName: string;
     parentPhone: string;
     parentEmail: string;
@@ -337,6 +345,7 @@ export const authService = {
         fullName: input.fullName,
         admissionNumber: input.admissionNumber,
         className: input.className,
+        house: input.house,
         parentName: input.parentName,
         parentPhone: input.parentPhone,
         parentEmail: input.parentEmail,
@@ -355,6 +364,55 @@ export const authService = {
     });
 
     return student;
+  },
+
+  /**
+   * Forgot-password for Admin/Accountant/Seller. Reveals nothing about whether
+   * the email matched anything — the same message is returned either way.
+   */
+  async forgotPassword(schoolId: string, email: string) {
+    const user = await prisma.user.findFirst({
+      where: { schoolId, email, role: { in: [Role.ADMIN, Role.ACCOUNTANT, Role.SELLER] } },
+    });
+
+    if (user) {
+      const code = generateNumericCode(6);
+      const codeHash = await hashValue(code);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordResetCodeHash: codeHash, passwordResetExpires: new Date(Date.now() + 15 * 60 * 1000) },
+      });
+      await emailService.sendPasswordResetCode(email, user.fullName, code);
+      await recordAudit({ action: "PASSWORD_RESET_REQUESTED", actorId: user.id, schoolId });
+    }
+
+    return { message: "If that email is registered, a reset code has been sent to it." };
+  },
+
+  async resetPassword(schoolId: string, email: string, code: string, newPassword: string) {
+    const user = await prisma.user.findFirst({
+      where: { schoolId, email, role: { in: [Role.ADMIN, Role.ACCOUNTANT, Role.SELLER] } },
+    });
+
+    if (!user || !user.passwordResetCodeHash || !user.passwordResetExpires) {
+      throw ApiError.badRequest("Invalid or expired reset code.");
+    }
+    if (user.passwordResetExpires < new Date()) {
+      throw ApiError.badRequest("This reset code has expired. Request a new one.");
+    }
+
+    const validCode = await compareValue(code, user.passwordResetCodeHash);
+    if (!validCode) throw ApiError.badRequest("Invalid or expired reset code.");
+
+    const passwordHash = await hashValue(newPassword);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, passwordResetCodeHash: null, passwordResetExpires: null },
+    });
+
+    await recordAudit({ action: "PASSWORD_RESET_COMPLETED", actorId: user.id, schoolId });
+
+    return { message: "Password updated. You can now log in with your new password." };
   },
 
   issueSession,

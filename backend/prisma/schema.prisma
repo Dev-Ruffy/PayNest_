@@ -74,6 +74,35 @@ enum AuditAction {
   PIN_VIEWED
   HOUSEMASTER_PASSWORD_CHANGED
   SETTINGS_UPDATED
+  BATCH_CREATED
+  BATCH_CONFIRMED
+  BATCH_CANCELLED
+  PRODUCT_CREATED
+  PRODUCT_UPDATED
+  PRODUCT_DEACTIVATED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  CREDIT_LIMIT_UPDATED
+  PERIOD_RESET
+}
+
+enum BatchStatus {
+  DRAFT // being built by the housemaster, not yet confirmed
+  PROCESSING // confirm in progress — guards against double-submission
+  COMPLETED // confirm finished (individual orders may still be a mix of completed/failed/insufficient)
+  CANCELLED
+}
+
+enum BatchOrderStatus {
+  PENDING // in draft, not yet processed
+  COMPLETED
+  FAILED
+  INSUFFICIENT_BALANCE
+}
+
+enum CreditPeriodType {
+  TERM
+  SESSION
 }
 
 // ------------------------------------------------------------
@@ -103,6 +132,15 @@ model School {
   transactions        Transaction[]
   auditLogs           AuditLog[]
   verificationRequest VerificationRequest?
+  products            Product[]
+  batches             Batch[]
+
+  // Optional, school-configured student spending controls. Both are null by
+  // default (no limit). These apply uniformly to every student at the school.
+  creditPeriodType       CreditPeriodType? // whether creditPeriodMaxAmount resets per TERM or per SESSION
+  creditPeriodMaxAmount  Decimal?          @db.Decimal(12, 2) // max a student can be credited within the current period
+  currentPeriodStartedAt DateTime? // admin-resettable start of the "current" term/session — see PERIOD_RESET
+  dailySpendMaxAmount    Decimal?          @db.Decimal(12, 2) // max a student can spend (purchases) per calendar day
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -152,13 +190,20 @@ model User {
   approvalStatus StaffApprovalStatus @default(APPROVED) // ADMIN/DEVELOPER auto-approved; ACCOUNTANT/SELLER need approval
   isActive       Boolean             @default(true)
 
-  walletBalance Decimal @default(0) @db.Decimal(12, 2) // used by SELLER
+  walletBalance Decimal @default(0) @db.Decimal(12, 2) // used by SELLER — cumulative all-time balance
+
+  // Forgot-password flow (Admin/Accountant/Seller only — Housemaster uses the
+  // shared school password, Student uses PIN recovery instead).
+  passwordResetCodeHash String?
+  passwordResetExpires  DateTime?
 
   refreshTokens   RefreshToken[]
   createdStudents Student[]        @relation("StudentCreatedBy")
   creditsGiven    Transaction[]    @relation("TransactionCreatedByUser")
   auditLogs       AuditLog[]
   failedLogins    FailedLogin[]
+  createdProducts Product[]        @relation("ProductCreatedBy")
+  createdBatches  Batch[]          @relation("BatchCreatedBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -192,6 +237,7 @@ model Student {
   fullName        String
   admissionNumber String
   className       String
+  house           String? // optional boarding-house grouping, used for bulk-order filtering
   parentName      String
   parentPhone     String
   parentEmail     String
@@ -211,6 +257,7 @@ model Student {
   transactionsAsSender   Transaction[]  @relation("TransactionSenderStudent")
   transactionsAsReceiver Transaction[]  @relation("TransactionReceiverStudent")
   refreshTokens          RefreshToken[]
+  batchOrders            BatchOrder[]
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -253,12 +300,119 @@ model Transaction {
   items String? // JSON-encoded list of purchased item names (PURCHASE only)
   reference String @unique @default(uuid())
 
+  batchOrder BatchOrder?
+
   createdAt DateTime @default(now())
 
   @@index([schoolId, createdAt])
   @@index([senderStudentId])
   @@index([receiverStudentId])
   @@index([type])
+}
+
+// ------------------------------------------------------------
+// PRODUCT CATALOG (tuck shop items, managed by the Seller)
+// ------------------------------------------------------------
+
+model Product {
+  id       String  @id @default(uuid())
+  name     String
+  price    Decimal @db.Decimal(12, 2)
+  isActive Boolean @default(true)
+
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String
+
+  createdBy   User?   @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  createdById String?
+
+  batchOrderItems BatchOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId, isActive])
+}
+
+// ------------------------------------------------------------
+// BULK ORDER BATCH (Housemaster-initiated, many students at once)
+// ------------------------------------------------------------
+
+model Batch {
+  id     String      @id @default(uuid())
+  status BatchStatus @default(DRAFT)
+  label  String?
+
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId String
+
+  createdBy   User   @relation("BatchCreatedBy", fields: [createdById], references: [id])
+  createdById String
+
+  duplicatedFromId String?
+  duplicatedFrom   Batch?  @relation("BatchDuplicate", fields: [duplicatedFromId], references: [id])
+  duplicates       Batch[] @relation("BatchDuplicate")
+
+  orders BatchOrder[]
+
+  confirmedAt  DateTime?
+  totalAmount  Decimal   @default(0) @db.Decimal(12, 2)
+  studentCount Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId, status])
+  @@index([createdById])
+}
+
+model BatchOrder {
+  id      String @id @default(uuid())
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batchId String
+
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+
+  status      BatchOrderStatus @default(PENDING)
+  totalAmount Decimal          @default(0) @db.Decimal(12, 2)
+
+  isCustom     Boolean @default(false)
+  customReason String?
+
+  failureReason String?
+
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  transactionId String?      @unique
+
+  items BatchOrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([batchId, studentId])
+  @@index([batchId])
+  @@index([studentId])
+  @@index([status])
+}
+
+model BatchOrderItem {
+  id           String     @id @default(uuid())
+  batchOrder   BatchOrder @relation(fields: [batchOrderId], references: [id], onDelete: Cascade)
+  batchOrderId String
+
+  product   Product? @relation(fields: [productId], references: [id])
+  productId String?
+
+  nameSnapshot  String
+  priceSnapshot Decimal @db.Decimal(12, 2)
+  quantity      Int
+
+  lineTotal Decimal @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([batchOrderId])
 }
 
 // ------------------------------------------------------------

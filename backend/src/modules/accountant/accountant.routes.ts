@@ -15,5 +15,6 @@ router.get("/students", accountantController.listStudents);
 router.post("/credit", validate(creditStudentSchema), accountantController.creditStudent);
 router.get("/credit-history", accountantController.creditHistory);
 router.get("/transactions", accountantController.allTransactions);
+router.get("/seller-balance-history", accountantController.sellerBalanceHistory);
 
 export default router;
