@@ -52,6 +52,28 @@ async function issueSession(
   return accessToken;
 }
 
+/**
+ * Finds the account a password reset applies to. Accountants and Sellers keep
+ * their email on their own user record. The School Admin doesn't — their
+ * email is the school's registration email — so that address maps to the
+ * school's Admin account. Matching ignores letter case.
+ */
+async function findResettableUser(schoolId: string, email: string) {
+  const typed = email.trim();
+
+  const staff = await prisma.user.findFirst({
+    where: { schoolId, role: { in: [Role.ACCOUNTANT, Role.SELLER] }, email: { equals: typed, mode: "insensitive" } },
+  });
+  if (staff) return staff;
+
+  const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { email: true, deletedAt: true } });
+  if (school && !school.deletedAt && school.email.toLowerCase() === typed.toLowerCase()) {
+    return prisma.user.findFirst({ where: { schoolId, role: Role.ADMIN } });
+  }
+
+  return null;
+}
+
 export const authService = {
   REFRESH_COOKIE_NAME,
 
@@ -371,9 +393,7 @@ export const authService = {
    * the email matched anything — the same message is returned either way.
    */
   async forgotPassword(schoolId: string, email: string) {
-    const user = await prisma.user.findFirst({
-      where: { schoolId, email, role: { in: [Role.ADMIN, Role.ACCOUNTANT, Role.SELLER] } },
-    });
+    const user = await findResettableUser(schoolId, email);
 
     if (user) {
       const code = generateNumericCode(6);
@@ -390,9 +410,7 @@ export const authService = {
   },
 
   async resetPassword(schoolId: string, email: string, code: string, newPassword: string) {
-    const user = await prisma.user.findFirst({
-      where: { schoolId, email, role: { in: [Role.ADMIN, Role.ACCOUNTANT, Role.SELLER] } },
-    });
+    const user = await findResettableUser(schoolId, email);
 
     if (!user || !user.passwordResetCodeHash || !user.passwordResetExpires) {
       throw ApiError.badRequest("Invalid or expired reset code.");
