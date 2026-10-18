@@ -7,7 +7,7 @@ const ALGORITHM = "aes-256-gcm";
 const KEY = crypto.createHash("sha256").update(env.PIN_ENCRYPTION_KEY).digest();
 
 /**
- * Reversible encryption — used ONLY for the student PIN "view" recovery
+ * Reversible encryption - used ONLY for the student PIN "view" recovery
  * feature available to School Admins. Authentication never uses this;
  * login always checks the bcrypt hash instead.
  */

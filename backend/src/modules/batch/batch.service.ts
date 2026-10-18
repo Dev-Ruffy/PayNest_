@@ -37,7 +37,7 @@ export const batchService = {
       action: "BATCH_CREATED",
       actorId: params.createdById,
       schoolId: params.schoolId,
-      detail: `Batch ${batch.id.slice(0, 8)} started${params.label ? ` — ${params.label}` : ""}`,
+      detail: `Batch ${batch.id.slice(0, 8)} started${params.label ? ` - ${params.label}` : ""}`,
     });
     return batch;
   },
@@ -190,17 +190,27 @@ export const batchService = {
     return prisma.batchOrder.findUnique({ where: { id: batchOrder.id }, include: ORDER_INCLUDE });
   },
 
-  async applyProductToStudents(params: {
+  /** "Apply to Selected Students": adds or increases one or more products across many students at once, adding them to the batch first if needed. */
+  async applyProductsToStudents(params: {
     schoolId: string;
     batchId: string;
     studentIds: string[];
-    productId: string;
-    quantity: number;
+    items: { productId: string; quantity: number }[];
   }) {
     const batch = await getDraftBatchOrThrow(params.schoolId, params.batchId);
 
-    const product = await prisma.product.findFirst({ where: { id: params.productId, schoolId: params.schoolId, isActive: true } });
-    if (!product) throw ApiError.badRequest("Product not found or no longer active.");
+    // If the same product is listed twice, merge it into one line with the quantities added together.
+    const wanted = new Map<string, number>();
+    for (const item of params.items) {
+      wanted.set(item.productId, (wanted.get(item.productId) ?? 0) + item.quantity);
+    }
+
+    const products = (await prisma.product.findMany({
+      where: { id: { in: Array.from(wanted.keys()) }, schoolId: params.schoolId, isActive: true },
+    })) as ProductRow[];
+    if (products.length !== wanted.size) {
+      throw ApiError.badRequest("One of the selected products was not found or is no longer active.");
+    }
 
     const students = await prisma.student.findMany({
       where: { id: { in: params.studentIds }, schoolId: params.schoolId, isActive: true },
@@ -219,27 +229,30 @@ export const batchService = {
         include: { items: true },
       });
 
-      const existingLine = batchOrder.items.find((i: { productId: string | null }) => i.productId === product.id);
+      for (const product of products) {
+        const quantity = wanted.get(product.id) as number;
+        const existingLine = batchOrder.items.find((i: { productId: string | null }) => i.productId === product.id);
 
-      if (existingLine) {
-        const newQty = existingLine.quantity + params.quantity;
-        // eslint-disable-next-line no-await-in-loop
-        await prisma.batchOrderItem.update({
-          where: { id: existingLine.id },
-          data: { quantity: newQty, lineTotal: Number(product.price) * newQty, priceSnapshot: product.price },
-        });
-      } else {
-        // eslint-disable-next-line no-await-in-loop
-        await prisma.batchOrderItem.create({
-          data: {
-            batchOrderId: batchOrder.id,
-            productId: product.id,
-            nameSnapshot: product.name,
-            priceSnapshot: product.price,
-            quantity: params.quantity,
-            lineTotal: Number(product.price) * params.quantity,
-          },
-        });
+        if (existingLine) {
+          const newQty = existingLine.quantity + quantity;
+          // eslint-disable-next-line no-await-in-loop
+          await prisma.batchOrderItem.update({
+            where: { id: existingLine.id },
+            data: { quantity: newQty, lineTotal: Number(product.price) * newQty, priceSnapshot: product.price as number },
+          });
+        } else {
+          // eslint-disable-next-line no-await-in-loop
+          await prisma.batchOrderItem.create({
+            data: {
+              batchOrderId: batchOrder.id,
+              productId: product.id,
+              nameSnapshot: product.name,
+              priceSnapshot: product.price as number,
+              quantity,
+              lineTotal: Number(product.price) * quantity,
+            },
+          });
+        }
       }
 
       // eslint-disable-next-line no-await-in-loop
@@ -253,7 +266,7 @@ export const batchService = {
       appliedCount += 1;
     }
 
-    return { appliedCount, productName: product.name };
+    return { appliedCount, productCount: products.length };
   },
 
   async getReview(schoolId: string, batchId: string) {
@@ -313,7 +326,7 @@ export const batchService = {
     const batch = await prisma.batch.findFirst({ where: { id: params.batchId, schoolId: params.schoolId } });
     if (!batch) throw ApiError.notFound("Batch not found.");
 
-    // Atomic claim — the single guard against double-submission.
+    // Atomic claim - the single guard against double-submission.
     const claimed = await prisma.batch.updateMany({
       where: { id: batch.id, status: BatchStatus.DRAFT },
       data: { status: BatchStatus.PROCESSING },
@@ -325,7 +338,7 @@ export const batchService = {
     const seller = await prisma.user.findFirst({ where: { schoolId: params.schoolId, role: Role.SELLER } });
     if (!seller) {
       await prisma.batch.update({ where: { id: batch.id }, data: { status: BatchStatus.DRAFT } });
-      throw ApiError.badRequest("This school doesn't have a Tuck Shop Seller yet — add one before confirming a batch.");
+      throw ApiError.badRequest("This school doesn't have a Tuck Shop Seller yet - add one before confirming a batch.");
     }
 
     const orders = await prisma.batchOrder.findMany({
@@ -380,6 +393,7 @@ export const batchService = {
           items: itemNames,
           createdById: params.actorId,
           createdByRole: Role.HOUSEMASTER,
+          description: batch.label ? `Bulk order: ${batch.label}` : "Bulk order",
         });
 
         // eslint-disable-next-line no-await-in-loop

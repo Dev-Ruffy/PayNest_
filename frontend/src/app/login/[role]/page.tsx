@@ -50,7 +50,7 @@ function StaffOrAdminForm({
   } = useForm<StaffLoginInput>({ resolver: zodResolver(staffLoginSchema) });
 
   const mutation = useMutation({
-    mutationFn: (data: StaffLoginInput) => api.post(meta.endpoint, { ...data, schoolId }),
+    mutationFn: (data: StaffLoginInput) => api.post(meta.endpoint, { ...data, schoolId, role: meta.role }),
     onSuccess: (res) => {
       const { accessToken, role, user } = res.data.data;
       setSession(accessToken, user);

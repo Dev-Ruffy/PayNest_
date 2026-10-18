@@ -28,7 +28,12 @@ export const developerLoginSchema = z.object({
 });
 
 export const staffLoginSchema = z.object({
-  body: z.object({ schoolId: z.string().uuid(), username: z.string().min(1), password: z.string().min(1) }),
+  body: z.object({
+    schoolId: z.string().uuid(),
+    username: z.string().min(1),
+    password: z.string().min(1),
+    role: z.enum(["ADMIN", "ACCOUNTANT", "SELLER"]),
+  }),
 });
 
 export const housemasterLoginSchema = z.object({

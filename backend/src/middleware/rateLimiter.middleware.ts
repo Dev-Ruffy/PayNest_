@@ -1,7 +1,7 @@
 import rateLimit from "express-rate-limit";
 import { env } from "../config/env";
 
-/** General API rate limit — generous, protects against abuse/scraping. */
+/** General API rate limit - generous, protects against abuse/scraping. */
 export const generalLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
   max: env.RATE_LIMIT_MAX,

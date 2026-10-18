@@ -10,7 +10,7 @@ export const addStudentsSchema = z.object({
 
 const orderItemSchema = z.object({
   productId: z.string().uuid(),
-  quantity: z.coerce.number().int().positive(),
+  quantity: z.coerce.number().int().min(1, "Quantity must be at least 1").max(1000),
 });
 
 export const setStudentOrderSchema = z.object({
@@ -29,7 +29,6 @@ export const setStudentOrderSchema = z.object({
 export const applyProductSchema = z.object({
   body: z.object({
     studentIds: z.array(z.string().uuid()).min(1, "Select at least one student"),
-    productId: z.string().uuid(),
-    quantity: z.coerce.number().int().positive(),
+    items: z.array(orderItemSchema).min(1, "Choose at least one product"),
   }),
 });

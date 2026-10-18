@@ -24,7 +24,7 @@ export const authController = {
   }),
 
   staffLogin: asyncHandler(async (req, res) => {
-    const user = await authService.staffLogin(req.body.schoolId, req.body.username, req.body.password, ipOf(req));
+    const user = await authService.staffLogin(req.body.schoolId, req.body.username, req.body.password, req.body.role, ipOf(req));
     const accessToken = await authService.issueSession(res, { id: user.id, role: user.role, schoolId: user.schoolId, isStudent: false });
     sendSuccess(res, {
       accessToken,

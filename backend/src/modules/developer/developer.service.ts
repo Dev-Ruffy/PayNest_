@@ -62,7 +62,7 @@ export const developerService = {
     return schools;
   },
 
-  /** Schools currently in the trash — soft-deleted, but fully intact and restorable. */
+  /** Schools currently in the trash - soft-deleted, but fully intact and restorable. */
   async listDeletedSchools() {
     const schools = await prisma.school.findMany({
       where: { deletedAt: { not: null } },
@@ -155,7 +155,7 @@ export const developerService = {
   },
 
   /**
-   * Moves a school to the trash instead of destroying it — nothing about the
+   * Moves a school to the trash instead of destroying it - nothing about the
    * school, its users, students or transactions is touched. This is the
    * "undo-able" delete used from the main Schools list.
    */
@@ -175,7 +175,7 @@ export const developerService = {
     return { message: `${school.name} has been moved to the trash. You can restore it any time from the Trash tab.` };
   },
 
-  /** Undoes a deleteSchool — the school and everything in it becomes visible/usable again. */
+  /** Undoes a deleteSchool - the school and everything in it becomes visible/usable again. */
   async restoreSchool(schoolId: string, developerId: string) {
     const school = await prisma.school.findUnique({ where: { id: schoolId } });
     if (!school) throw ApiError.notFound("School not found.");
@@ -193,7 +193,7 @@ export const developerService = {
   },
 
   /**
-   * The true, irreversible delete — only callable on a school that's already
+   * The true, irreversible delete - only callable on a school that's already
    * in the trash, as a deliberate second, separately-confirmed step. This
    * cascades and destroys every user, student, transaction and log tied to
    * the school; there is no recovering from this one.
@@ -206,15 +206,15 @@ export const developerService = {
     }
 
     const schoolName = school.name;
-    await prisma.school.delete({ where: { id: schoolId } }); // cascades — irreversible
+    await prisma.school.delete({ where: { id: schoolId } }); // cascades - irreversible
 
     // The school row (and therefore any audit log tied to it via schoolId) is gone, so this
-    // final entry is deliberately logged without a schoolId — it would otherwise be deleted
+    // final entry is deliberately logged without a schoolId - it would otherwise be deleted
     // by the very cascade it's recording.
     await recordAudit({
       action: "SCHOOL_PURGED",
       actorId: developerId,
-      detail: `${schoolName} permanently deleted by developer — this cannot be undone`,
+      detail: `${schoolName} permanently deleted by developer - this cannot be undone`,
     });
 
     return { message: `${schoolName} has been permanently deleted.` };
@@ -367,7 +367,7 @@ export const developerService = {
     return {
       provider: "Cloudinary",
       configured,
-      status: configured ? "connected" : "not configured — future-ready, no active uploads yet",
+      status: configured ? "connected" : "not configured - future-ready, no active uploads yet",
     };
   },
 

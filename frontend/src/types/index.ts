@@ -1,10 +1,21 @@
-export type Role = "DEVELOPER" | "ADMIN" | "ACCOUNTANT" | "HOUSEMASTER" | "STUDENT" | "SELLER";
+export type Role =
+  | 'DEVELOPER'
+  | 'ADMIN'
+  | 'ACCOUNTANT'
+  | 'HOUSEMASTER'
+  | 'STUDENT'
+  | 'SELLER';
 
-export type SchoolStatus = "PENDING_VERIFICATION" | "CODE_SENT" | "ACTIVE" | "SUSPENDED" | "REJECTED";
+export type SchoolStatus =
+  | 'PENDING_VERIFICATION'
+  | 'CODE_SENT'
+  | 'ACTIVE'
+  | 'SUSPENDED'
+  | 'REJECTED';
 
-export type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
-export type CreditPeriodType = "TERM" | "SESSION";
+export type CreditPeriodType = 'TERM' | 'SESSION';
 
 export interface School {
   id: string;
@@ -67,8 +78,8 @@ export interface StaffMember {
 
 export interface Transaction {
   id: string;
-  type: "DEPOSIT" | "PURCHASE" | "ADJUSTMENT" | "REVERSAL";
-  status: "PENDING" | "SUCCESS" | "FAILED" | "REVERSED";
+  type: 'DEPOSIT' | 'PURCHASE' | 'ADJUSTMENT' | 'REVERSAL';
+  status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REVERSED';
   amount: string | number;
   description: string | null;
   reference: string;
@@ -113,8 +124,12 @@ export interface Product {
   createdAt: string;
 }
 
-export type BatchStatus = "DRAFT" | "PROCESSING" | "COMPLETED" | "CANCELLED";
-export type BatchOrderStatus = "PENDING" | "COMPLETED" | "FAILED" | "INSUFFICIENT_BALANCE";
+export type BatchStatus = 'DRAFT' | 'PROCESSING' | 'COMPLETED' | 'CANCELLED';
+export type BatchOrderStatus =
+  | 'PENDING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'INSUFFICIENT_BALANCE';
 
 export interface BatchOrderItem {
   id: string;
@@ -167,7 +182,7 @@ export interface BatchReviewOrder {
   totalAmount: number;
   isCustom: boolean;
   customReason: string | null;
-  liveStatus: "READY" | "INSUFFICIENT_BALANCE" | "EMPTY";
+  liveStatus: 'READY' | 'INSUFFICIENT_BALANCE' | 'EMPTY';
   shortfall: number;
 }
 

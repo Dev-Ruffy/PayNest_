@@ -13,6 +13,7 @@ import { AuditLogTab } from "@/components/dashboard/admin/AuditLogTab";
 import { SettingsTab } from "@/components/dashboard/admin/SettingsTab";
 import { TransactionsTable } from "@/components/dashboard/shared/TransactionsTable";
 import { api } from "@/lib/axios";
+import { useLiveApprovalCount } from "@/lib/useLiveApprovals";
 
 const navItems: NavItem[] = [
   { id: "overview", label: "Overview", icon: LayoutGrid },
@@ -26,6 +27,8 @@ const navItems: NavItem[] = [
 
 function AdminDashboardContent() {
   const [activeTab, setActiveTab] = useState("overview");
+  const pendingApprovals = useLiveApprovalCount("admin-approvals", "/admin/approvals", "staff registration");
+  const items = navItems.map((item) => (item.id === "approvals" ? { ...item, badge: pendingApprovals } : item));
 
   const { data: settings } = useQuery({
     queryKey: ["admin-settings"],
@@ -36,7 +39,7 @@ function AdminDashboardContent() {
     <DashboardShell
       roleLabel="School Admin"
       schoolName={settings?.name}
-      navItems={navItems}
+      navItems={items}
       activeTab={activeTab}
       onTabChange={setActiveTab}
     >
@@ -44,7 +47,7 @@ function AdminDashboardContent() {
       {activeTab === "students" && <StudentsTab />}
       {activeTab === "staff" && <StaffTab />}
       {activeTab === "approvals" && <ApprovalsTab />}
-      {activeTab === "transactions" && <TransactionsTable endpoint="/admin/transactions" title="School transactions" />}
+      {activeTab === "transactions" && <TransactionsTable endpoint="/admin/transactions" title="All school transactions" />}
       {activeTab === "audit" && <AuditLogTab />}
       {activeTab === "settings" && <SettingsTab />}
     </DashboardShell>

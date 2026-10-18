@@ -33,7 +33,7 @@ export default function RegisterSchoolPage() {
   return (
     <AuthLayout
       title="Register your school"
-      subtitle="A PayNest developer will review your school and email a verification code — usually within a few minutes."
+      subtitle="A PayNest developer will review your school and email a verification code - usually within a few minutes."
     >
       <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
         <div>

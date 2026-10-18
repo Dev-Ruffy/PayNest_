@@ -28,7 +28,7 @@ function HousemasterDashboardContent() {
         />
       )}
       {activeTab === "bulk-orders" && <BulkOrdersTab />}
-      {activeTab === "history" && <TransactionsTable endpoint="/housemaster/transactions" title="Your transactions" />}
+      {activeTab === "history" && <TransactionsTable endpoint="/housemaster/transactions" title="All school transactions" />}
     </DashboardShell>
   );
 }

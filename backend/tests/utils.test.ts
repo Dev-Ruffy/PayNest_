@@ -1,40 +1,44 @@
-import { hashValue, compareValue } from "../src/utils/bcrypt.util";
-import { generateNumericCode, generateSharedPassword, generateToken } from "../src/utils/generateCode.util";
-import { ApiError } from "../src/utils/ApiError";
+import { hashValue, compareValue } from '../src/utils/bcrypt.util';
+import {
+  generateNumericCode,
+  generateSharedPassword,
+  generateToken,
+} from '../src/utils/generateCode.util';
+import { ApiError } from '../src/utils/ApiError';
 
-describe("bcrypt.util", () => {
-  it("hashes a value and can verify it against the original", async () => {
-    const hash = await hashValue("Password123!");
-    expect(hash).not.toEqual("Password123!");
-    await expect(compareValue("Password123!", hash)).resolves.toBe(true);
-    await expect(compareValue("WrongPassword", hash)).resolves.toBe(false);
+describe('bcrypt.util', () => {
+  it('hashes a value and can verify it against the original', async () => {
+    const hash = await hashValue('Password123!');
+    expect(hash).not.toEqual('Password123!');
+    await expect(compareValue('Password123!', hash)).resolves.toBe(true);
+    await expect(compareValue('WrongPassword', hash)).resolves.toBe(false);
   });
 });
 
-describe("generateCode.util", () => {
-  it("generates a 6-digit numeric verification code by default", () => {
+describe('generateCode.util', () => {
+  it('generates a 6-digit numeric verification code by default', () => {
     const code = generateNumericCode();
     expect(code).toHaveLength(6);
     expect(/^\d{6}$/.test(code)).toBe(true);
   });
 
-  it("generates a custom-length numeric code", () => {
+  it('generates a custom-length numeric code', () => {
     expect(generateNumericCode(4)).toHaveLength(4);
   });
 
-  it("generates a human-typable shared housemaster password", () => {
+  it('generates a human-typable shared housemaster password', () => {
     const password = generateSharedPassword();
     expect(password).toMatch(/^house-[a-z]+-\d{4}$/);
   });
 
-  it("generates a sufficiently long random token", () => {
+  it('generates a sufficiently long random token', () => {
     const token = generateToken();
     expect(token.length).toBeGreaterThanOrEqual(64);
   });
 });
 
-describe("ApiError", () => {
-  it("builds the correct status code for each factory method", () => {
+describe('ApiError', () => {
+  it('builds the correct status code for each factory method', () => {
     expect(ApiError.badRequest().statusCode).toBe(400);
     expect(ApiError.unauthorized().statusCode).toBe(401);
     expect(ApiError.forbidden().statusCode).toBe(403);
@@ -44,9 +48,9 @@ describe("ApiError", () => {
     expect(ApiError.internal().statusCode).toBe(500);
   });
 
-  it("is flagged as an operational error", () => {
-    const err = ApiError.badRequest("Bad input");
+  it('is flagged as an operational error', () => {
+    const err = ApiError.badRequest('Bad input');
     expect(err.isOperational).toBe(true);
-    expect(err.message).toBe("Bad input");
+    expect(err.message).toBe('Bad input');
   });
 });

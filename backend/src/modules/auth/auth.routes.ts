@@ -27,7 +27,7 @@ router.post("/login/student", authLimiter, validate(studentLoginSchema), authCon
 router.post("/register/staff", validate(registerStaffSchema), authController.registerStaff);
 // NOTE: public student self-registration has been intentionally removed. Student accounts are
 // now created only by an Accountant (POST /accountant/students), a Housemaster
-// (POST /housemaster/students), or a future bulk-import tool — all of which call
+// (POST /housemaster/students), or a future bulk-import tool - all of which call
 // authService.registerStudent() directly rather than going through this public route.
 
 router.post("/refresh", authController.refresh);

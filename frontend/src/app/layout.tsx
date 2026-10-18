@@ -24,9 +24,9 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PayNest — The digital wallet built for schools",
+  title: "PayNest - The digital wallet built for schools",
   description:
-    "PayNest replaces cash at the tuck shop with secure student wallets — built for Housemasters, Accountants, and School Admins.",
+    "PayNest gives every student a secure digital wallet for the tuck shop. Built for Housemasters, Accountants, and School Admins.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

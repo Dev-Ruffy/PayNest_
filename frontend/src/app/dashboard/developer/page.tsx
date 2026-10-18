@@ -11,6 +11,7 @@ import { UsersTab } from "@/components/dashboard/developer/UsersTab";
 import { LogsTab } from "@/components/dashboard/developer/LogsTab";
 import { SystemTab } from "@/components/dashboard/developer/SystemTab";
 import { TransactionsTable } from "@/components/dashboard/shared/TransactionsTable";
+import { useLiveApprovalCount } from "@/lib/useLiveApprovals";
 
 const navItems: NavItem[] = [
   { id: "overview", label: "Overview", icon: LayoutGrid },
@@ -24,9 +25,11 @@ const navItems: NavItem[] = [
 
 function DeveloperDashboardContent() {
   const [activeTab, setActiveTab] = useState("overview");
+  const pendingSchools = useLiveApprovalCount("developer-verification-requests", "/developer/verification-requests", "school");
+  const items = navItems.map((item) => (item.id === "approvals" ? { ...item, badge: pendingSchools } : item));
 
   return (
-    <DashboardShell roleLabel="Developer" navItems={navItems} activeTab={activeTab} onTabChange={setActiveTab}>
+    <DashboardShell roleLabel="Developer" navItems={items} activeTab={activeTab} onTabChange={setActiveTab}>
       {activeTab === "overview" && <OverviewTab />}
       {activeTab === "schools" && <SchoolsTab />}
       {activeTab === "approvals" && <ApprovalsTab />}

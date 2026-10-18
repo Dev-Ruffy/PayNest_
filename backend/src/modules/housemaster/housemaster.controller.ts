@@ -42,13 +42,14 @@ export const housemasterController = {
     sendSuccess(res, result, "Student wallet credited.");
   }),
 
+  /** Every transaction at the school: purchases, wallet credits and bulk orders. */
   transactions: asyncHandler(async (req, res) => {
-    if (!req.auth) throw ApiError.forbidden();
+    if (!req.auth?.schoolId) throw ApiError.forbidden();
     const page = Number(req.query.page ?? 1);
-    sendSuccess(res, await transactionService.listCreatedBy(req.auth.id, page));
+    sendSuccess(res, await transactionService.listForSchool(req.auth.schoolId, page));
   }),
 
-  // NOTE: PIN viewing was intentionally removed from Housemaster — Admin-only now.
+  // NOTE: PIN viewing was intentionally removed from Housemaster - Admin-only now.
 
   listProducts: asyncHandler(async (req, res) => {
     if (!req.auth?.schoolId) throw ApiError.forbidden();

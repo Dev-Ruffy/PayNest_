@@ -22,7 +22,7 @@ const envSchema = z.object({
 
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
 
-  // Email is sent via Brevo's HTTPS API rather than SMTP — outbound SMTP
+  // Email is sent via Brevo's HTTPS API rather than SMTP - outbound SMTP
   // (ports 25/465/587) is permanently blocked on Render's free tier and
   // several other free hosting tiers, but a plain HTTPS API call isn't.
   BREVO_API_KEY: z.string().optional(), // if unset, emails are logged instead of sent (local dev)

@@ -18,7 +18,7 @@ function refreshCookieOptions() {
   return {
     httpOnly: true,
     // SameSite=None is required for the cookie to be sent across different
-    // sites (e.g. a Vercel frontend calling a Render backend) — and browsers
+    // sites (e.g. a Vercel frontend calling a Render backend) - and browsers
     // require Secure=true whenever SameSite=None is used, so both flip
     // together based on environment rather than independently.
     secure: env.isProd ? true : env.COOKIE_SECURE,
@@ -54,8 +54,8 @@ async function issueSession(
 
 /**
  * Finds the account a password reset applies to. Accountants and Sellers keep
- * their email on their own user record. The School Admin doesn't — their
- * email is the school's registration email — so that address maps to the
+ * their email on their own user record. The School Admin doesn't - their
+ * email is the school's registration email - so that address maps to the
  * school's Admin account. Matching ignores letter case.
  */
 async function findResettableUser(schoolId: string, email: string) {
@@ -200,7 +200,7 @@ export const authService = {
     return { userId: developer.id };
   },
 
-  async staffLogin(schoolId: string, username: string, password: string, ip?: string) {
+  async staffLogin(schoolId: string, username: string, password: string, role: Role, ip?: string) {
     const user = await prisma.user.findFirst({
       where: { schoolId, username, role: { in: [Role.ADMIN, Role.ACCOUNTANT, Role.SELLER] } },
       include: { school: true },
@@ -211,18 +211,30 @@ export const authService = {
       throw ApiError.unauthorized("Invalid username or password.");
     }
 
+    const valid = await compareValue(password, user.passwordHash);
+    if (!valid) {
+      await recordAudit({ action: "LOGIN_FAILED", actorId: user.id, schoolId, ipAddress: ip });
+      throw ApiError.unauthorized("Invalid username or password.");
+    }
+
+    // Right credentials, wrong door: each role may only sign in through its own login page.
+    if (user.role !== role) {
+      await recordAudit({
+        action: "LOGIN_FAILED",
+        actorId: user.id,
+        schoolId,
+        detail: `Used the ${role} login page with a ${user.role} account`,
+        ipAddress: ip,
+      });
+      throw ApiError.forbidden("These details belong to a different type of account. Please use the login page for your own role.");
+    }
+
     if (!user.isActive) throw ApiError.forbidden("Your school has not completed verification yet.");
     if (user.approvalStatus === StaffApprovalStatus.PENDING) {
       throw ApiError.forbidden("Your registration is still awaiting approval from your School Admin.");
     }
     if (user.approvalStatus === StaffApprovalStatus.REJECTED) {
       throw ApiError.forbidden("Your registration was declined by your School Admin.");
-    }
-
-    const valid = await compareValue(password, user.passwordHash);
-    if (!valid) {
-      await recordAudit({ action: "LOGIN_FAILED", actorId: user.id, schoolId, ipAddress: ip });
-      throw ApiError.unauthorized("Invalid username or password.");
     }
 
     await recordAudit({ action: "LOGIN_SUCCESS", actorId: user.id, schoolId, ipAddress: ip });
@@ -272,7 +284,7 @@ export const authService = {
 
     if (!student.pinHash) {
       throw ApiError.badRequest(
-        "You haven't set up a PIN yet. This happens automatically the first time you buy something at the tuck shop — ask the Seller to help you get started."
+        "You haven't set up a PIN yet. This happens automatically the first time you buy something at the tuck shop - ask the Seller to help you get started."
       );
     }
 
@@ -347,7 +359,7 @@ export const authService = {
     parentName: string;
     parentPhone: string;
     parentEmail: string;
-    pin?: string; // optional — Accountant/Housemaster no longer collect a PIN at creation time;
+    pin?: string; // optional - Accountant/Housemaster no longer collect a PIN at creation time;
                   // it's set automatically the first time the student makes a tuck shop purchase.
     createdById?: string;
   }) {
@@ -390,7 +402,7 @@ export const authService = {
 
   /**
    * Forgot-password for Admin/Accountant/Seller. Reveals nothing about whether
-   * the email matched anything — the same message is returned either way.
+   * the email matched anything - the same message is returned either way.
    */
   async forgotPassword(schoolId: string, email: string) {
     const user = await findResettableUser(schoolId, email);
@@ -470,7 +482,7 @@ export const authService = {
     } else {
       const user = await prisma.user.findUnique({ where: { id: subjectId }, include: { school: true } });
       if (!user || !user.isActive) throw ApiError.unauthorized("Account no longer active.");
-      // Developer accounts have no linked school (schoolId is null) — only check usability when one exists.
+      // Developer accounts have no linked school (schoolId is null) - only check usability when one exists.
       if (user.school && !isSchoolUsable(user.school)) throw ApiError.unauthorized("Account no longer active.");
       schoolId = user.schoolId;
     }

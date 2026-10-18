@@ -10,11 +10,29 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* A little denser on phones: sizes are in rem, so everything scales down together. */
+@media (max-width: 640px) {
+  html {
+    font-size: 14.5px;
+  }
 }
 
 body {
   @apply bg-parchment text-ink antialiased;
   font-feature-settings: "ss01" on, "cv11" on;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip; /* never let the page scroll sideways */
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
 }
 
 ::selection {

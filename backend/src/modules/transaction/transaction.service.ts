@@ -5,6 +5,14 @@ import { compareValue, hashValue } from "../../utils/bcrypt.util";
 import { encryptSecret } from "../../utils/crypto.util";
 import { recordAudit } from "../../utils/auditLog.util";
 
+// Every transaction list returns the same details, so history screens can show
+// the student's name, what was bought and who recorded it, whichever role is looking.
+const TX_INCLUDE = {
+  senderStudent: { select: { fullName: true, admissionNumber: true } },
+  receiverStudent: { select: { fullName: true, admissionNumber: true } },
+  createdBy: { select: { fullName: true, role: true } },
+} as const;
+
 async function assertWithinCreditLimit(schoolId: string, studentId: string, amount: number) {
   const school = await prisma.school.findUnique({
     where: { id: schoolId },
@@ -58,6 +66,7 @@ async function settlePurchase(params: {
   items: string[];
   createdById: string;
   createdByRole: Role;
+  description?: string;
 }) {
   if (params.amount <= 0) throw ApiError.badRequest("Amount must be greater than zero.");
   if (params.currentBalance < params.amount) throw ApiError.badRequest("Insufficient wallet balance.");
@@ -71,7 +80,7 @@ async function settlePurchase(params: {
       data: {
         type: TransactionType.PURCHASE,
         amount: params.amount,
-        description: "Tuck shop purchase",
+        description: params.description ?? "Tuck shop purchase",
         schoolId: params.schoolId,
         senderStudentId: params.studentId,
         receiverUserId: params.sellerId,
@@ -196,11 +205,7 @@ export const transactionService = {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: {
-          senderStudent: { select: { fullName: true, admissionNumber: true } },
-          receiverStudent: { select: { fullName: true, admissionNumber: true } },
-          createdBy: { select: { fullName: true, role: true } },
-        },
+        include: TX_INCLUDE,
       }),
       prisma.transaction.count({ where: { schoolId } }),
     ]);
@@ -210,7 +215,7 @@ export const transactionService = {
   async listForStudent(studentId: string, page = 1, pageSize = 20) {
     const where = { OR: [{ senderStudentId: studentId }, { receiverStudentId: studentId }] };
     const [items, total] = await Promise.all([
-      prisma.transaction.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize }),
+      prisma.transaction.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize, include: TX_INCLUDE }),
       prisma.transaction.count({ where }),
     ]);
     return { items, total, page, pageSize };
@@ -224,7 +229,7 @@ export const transactionService = {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { receiverStudent: { select: { fullName: true, admissionNumber: true } } },
+        include: TX_INCLUDE,
       }),
       prisma.transaction.count({ where }),
     ]);
@@ -239,7 +244,7 @@ export const transactionService = {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { senderStudent: { select: { fullName: true, admissionNumber: true } } },
+        include: TX_INCLUDE,
       }),
       prisma.transaction.count({ where }),
     ]);

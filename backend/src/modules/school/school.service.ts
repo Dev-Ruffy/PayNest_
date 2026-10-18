@@ -4,7 +4,7 @@ import { ApiError } from "../../utils/ApiError";
 
 /**
  * A school is usable (loginable, listable, joinable) only if it exists and hasn't
- * been soft-deleted. Deliberately a plain predicate — not a throwing helper — so
+ * been soft-deleted. Deliberately a plain predicate - not a throwing helper - so
  * every call site keeps its own existing error message rather than a shared one
  * that could accidentally leak whether a school exists vs. is merely deleted.
  */
@@ -34,7 +34,7 @@ export const schoolService = {
 
   /**
    * Tells the sign-up flow whether an Accountant/Seller slot is taken, so
-   * the UI can show "Login" instead of "Sign Up" — enforcing the one
+   * the UI can show "Login" instead of "Sign Up" - enforcing the one
    * Accountant / one Seller per school rule before the user even submits.
    */
   async getStaffAvailability(schoolId: string) {

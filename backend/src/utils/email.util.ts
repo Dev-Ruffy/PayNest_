@@ -3,13 +3,13 @@ import { logger } from "../config/logger";
 
 // Sent over Brevo's HTTPS transactional email API rather than SMTP.
 // Outbound SMTP (ports 25/465/587) is permanently blocked on Render's free
-// tier — and several other free hosting tiers — as an anti-spam measure, but
+// tier - and several other free hosting tiers - as an anti-spam measure, but
 // a plain HTTPS POST like this one isn't affected by that at all.
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
 async function sendMail(to: string, subject: string, html: string) {
   if (!env.BREVO_API_KEY) {
-    // No API key configured — logged instead of sent. This is expected for
+    // No API key configured - logged instead of sent. This is expected for
     // local development; see sendVerificationCode for the code-specific
     // fallback that developers actually need to see during testing.
     logger.info(`[No BREVO_API_KEY configured] Would send "${subject}" to ${to}`);
@@ -34,10 +34,10 @@ async function sendMail(to: string, subject: string, html: string) {
 
     if (!res.ok) {
       const body = await res.text();
-      logger.error(`Failed to send email to ${to}: Brevo responded ${res.status} — ${body}`);
+      logger.error(`Failed to send email to ${to}: Brevo responded ${res.status} - ${body}`);
     }
   } catch (err) {
-    // Email delivery failures should never crash a request — they are
+    // Email delivery failures should never crash a request - they are
     // logged so the developer can investigate.
     logger.error(`Failed to send email to ${to}: ${(err as Error).message}`);
   }
@@ -54,7 +54,7 @@ const wrapper = (title: string, bodyHtml: string) => `
         ${bodyHtml}
       </div>
       <div style="padding:16px 32px;background:#F6F1E4;color:#8A8370;font-size:12px;">
-        This is an automated message from PayNest — the school wallet & tuck-shop settlement platform.
+        This is an automated message from PayNest - the school wallet & tuck-shop settlement platform.
       </div>
     </div>
   </div>
@@ -77,7 +77,7 @@ export const emailService = {
 
   async sendVerificationCode(schoolEmail: string, code: string, housemasterPassword: string) {
     if (!env.BREVO_API_KEY) {
-      // No API key configured — the email below will silently do nothing, so
+      // No API key configured - the email below will silently do nothing, so
       // this is the only way to actually get the code. Printed regardless of
       // NODE_ENV: if Brevo isn't set up, there's no other path to the code.
       logger.info(`[No BREVO_API_KEY configured] Verification code for ${schoolEmail}: ${code}`);
@@ -116,7 +116,7 @@ export const emailService = {
   async notifySchoolApproved(schoolEmail: string, schoolName: string) {
     await sendMail(
       schoolEmail,
-      "PayNest — School approved",
+      "PayNest - School approved",
       wrapper("You're approved!", `<p>${schoolName} has been approved by the PayNest developer. Check your inbox for a verification code.</p>`)
     );
   },
@@ -124,7 +124,7 @@ export const emailService = {
   async notifySchoolRejected(schoolEmail: string, schoolName: string, reason?: string) {
     await sendMail(
       schoolEmail,
-      "PayNest — School registration update",
+      "PayNest - School registration update",
       wrapper(
         "Registration not approved",
         `<p>Unfortunately, the registration for ${schoolName} was not approved.</p>${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}`
@@ -135,7 +135,7 @@ export const emailService = {
   async notifyStaffApproval(email: string, name: string, role: string, approved: boolean) {
     await sendMail(
       email,
-      `PayNest — ${approved ? "Registration approved" : "Registration declined"}`,
+      `PayNest - ${approved ? "Registration approved" : "Registration declined"}`,
       wrapper(
         approved ? "You're approved!" : "Registration declined",
         `<p>Hi ${name}, your ${role} registration has been ${approved ? "approved. You can now log in." : "declined by your School Admin."}</p>`

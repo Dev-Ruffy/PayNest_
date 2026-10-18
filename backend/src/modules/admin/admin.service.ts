@@ -76,7 +76,7 @@ export const adminService = {
       action: approve ? "STAFF_APPROVED" : "STAFF_REJECTED",
       actorId,
       schoolId,
-      detail: `${user.role} ${user.fullName}${reason ? ` — ${reason}` : ""}`,
+      detail: `${user.role} ${user.fullName}${reason ? ` - ${reason}` : ""}`,
     });
 
     if (user.email) {
@@ -98,7 +98,7 @@ export const adminService = {
       action: "STAFF_DELETED",
       actorId,
       schoolId,
-      detail: `${user.role} ${user.fullName} removed — signup slot is now available again`,
+      detail: `${user.role} ${user.fullName} removed - signup slot is now available again`,
     });
 
     return { message: `${user.fullName} has been removed. The ${user.role.toLowerCase()} slot is now open for a new signup.` };
@@ -179,7 +179,7 @@ export const adminService = {
     return school;
   },
 
-  /** Marks "a new term/session has begun" — resets the window the period credit limit counts within. */
+  /** Marks "a new term/session has begun" - resets the window the period credit limit counts within. */
   async resetPeriod(schoolId: string, actorId: string) {
     const school = await prisma.school.update({ where: { id: schoolId }, data: { currentPeriodStartedAt: new Date() } });
     await recordAudit({ action: "PERIOD_RESET", actorId, schoolId });

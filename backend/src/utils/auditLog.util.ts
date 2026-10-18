@@ -10,7 +10,7 @@ interface AuditParams {
   ipAddress?: string | null;
 }
 
-/** Fire-and-forget audit trail entry. Never throws — logging must not break the request. */
+/** Fire-and-forget audit trail entry. Never throws - logging must not break the request. */
 export async function recordAudit(params: AuditParams) {
   try {
     await prisma.auditLog.create({

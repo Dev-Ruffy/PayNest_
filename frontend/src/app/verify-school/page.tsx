@@ -82,7 +82,15 @@ function VerifySchoolContent() {
           <XCircle className="h-12 w-12 text-brick" />
           <p className="mt-4 text-sm text-slate-500">
             Unfortunately this registration wasn&apos;t approved. Check your school email for details, or contact the
-            PayNest developer.
+            PayNest developer on{" "}
+            <a href="mailto:rufaimuizz@gmail.com" className="font-medium text-ink underline underline-offset-2">
+              rufaimuizz@gmail.com
+            </a>{" "}
+            or WhatsApp{" "}
+            <a href="https://wa.me/2349129193132" target="_blank" rel="noopener noreferrer" className="font-medium text-ink underline underline-offset-2">
+              09129193132
+            </a>
+            .
           </p>
         </div>
       </AuthLayout>
@@ -116,7 +124,7 @@ function VerifySchoolContent() {
         </div>
         <p className="mt-4 text-sm text-slate-500">
           A verification code will be sent to your school email after approval by the PayNest developer. This may
-          take up to 5 minutes — this page will update automatically.
+          take up to 5 minutes - this page will update automatically.
         </p>
         <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
           <MailCheck className="h-4 w-4" />

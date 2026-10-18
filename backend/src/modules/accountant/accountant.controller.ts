@@ -46,7 +46,7 @@ export const accountantController = {
     sendSuccess(res, result);
   }),
 
-  /** School-wide transaction visibility — includes Seller purchases, Housemaster credits, everything. */
+  /** School-wide transaction visibility - includes Seller purchases, Housemaster credits, everything. */
   allTransactions: asyncHandler(async (req, res) => {
     if (!req.auth?.schoolId) throw ApiError.forbidden();
     const page = Number(req.query.page ?? 1);
@@ -54,7 +54,7 @@ export const accountantController = {
     sendSuccess(res, result);
   }),
 
-  /** The school's Seller daily balance history — one Seller per school, so no ID is needed. */
+  /** The school's Seller daily balance history - one Seller per school, so no ID is needed. */
   sellerBalanceHistory: asyncHandler(async (req, res) => {
     if (!req.auth?.schoolId) throw ApiError.forbidden();
     const seller = await prisma.user.findFirst({ where: { schoolId: req.auth.schoolId, role: Role.SELLER } });

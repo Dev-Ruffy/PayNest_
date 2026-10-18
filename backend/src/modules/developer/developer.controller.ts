@@ -69,7 +69,7 @@ export const developerController = {
     const page = Number(req.query.page ?? 1);
     const schoolId = (req.query.schoolId as string) || undefined;
     const actionParam = req.query.action as string | undefined;
-    // Only pass through action values that are real AuditAction enum members —
+    // Only pass through action values that are real AuditAction enum members -
     // anything else is silently ignored rather than crashing the Prisma query.
     const action =
       actionParam && (Object.values(AuditAction) as string[]).includes(actionParam)

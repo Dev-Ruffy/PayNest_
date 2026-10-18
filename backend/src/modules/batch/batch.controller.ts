@@ -47,12 +47,11 @@ export const batchController = {
   }),
 
   applyProduct: asyncHandler(async (req, res) => {
-    const result = await batchService.applyProductToStudents({
+    const result = await batchService.applyProductsToStudents({
       schoolId: schoolIdOf(req),
       batchId: req.params.id,
       studentIds: req.body.studentIds,
-      productId: req.body.productId,
-      quantity: req.body.quantity,
+      items: req.body.items,
     });
     sendSuccess(res, result, "Product applied.");
   }),
