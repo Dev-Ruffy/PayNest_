@@ -10,6 +10,7 @@
 
 html {
   scroll-behavior: smooth;
+  scrollbar-gutter: stable; /* stops the page jumping sideways when a popup hides the scrollbar */
   -webkit-text-size-adjust: 100%;
 }
 
@@ -45,17 +46,14 @@ canvas {
   background-image: repeating-linear-gradient(180deg, transparent, transparent 27px, rgba(18, 23, 42, 0.05) 28px);
 }
 
+/* Flat panels: blur effects (backdrop-filter) made some screens flicker, so these are plain and more opaque instead. */
 .glass-panel {
-  background: rgba(255, 253, 248, 0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 253, 248, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 .glass-panel-dark {
-  background: rgba(27, 34, 56, 0.55);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(27, 34, 56, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -83,5 +81,27 @@ canvas {
 @media print {
   .no-print {
     display: none !important;
+  }
+}
+
+/* Popup fade/slide in plain CSS. "backwards" means no transform is left on the card once it has appeared. */
+@keyframes modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-pop {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.modal-overlay {
+  animation: modal-fade 140ms ease-out backwards;
+}
+.modal-card {
+  animation: modal-pop 160ms ease-out backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-card {
+    animation: none;
   }
 }

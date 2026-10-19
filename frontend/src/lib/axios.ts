@@ -1,9 +1,9 @@
-import axios, { AxiosError } from 'axios';
-import { tokenStore } from './tokenStore';
-import { decodeAccessToken } from './jwt';
+import axios, { AxiosError } from "axios";
+import { tokenStore } from "./tokenStore";
+import { decodeAccessToken } from "./jwt";
 
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api",
   withCredentials: true, // sends the httpOnly refresh cookie
 });
 
@@ -20,7 +20,7 @@ let refreshPromise: Promise<string | null> | null = null;
 export async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = api
-      .post('/auth/refresh')
+      .post("/auth/refresh")
       .then((res) => {
         const newToken = res.data?.data?.accessToken as string | undefined;
         if (!newToken) return null;
@@ -43,21 +43,11 @@ export async function refreshAccessToken(): Promise<string | null> {
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
-    const originalRequest = error.config as
-      | (typeof error.config & { _retry?: boolean })
-      | undefined;
-    const url = originalRequest?.url ?? '';
-    const isAuthRoute =
-      url.includes('/auth/login') ||
-      url.includes('/auth/refresh') ||
-      url.includes('/auth/register');
+    const originalRequest = error.config as (typeof error.config & { _retry?: boolean }) | undefined;
+    const url = originalRequest?.url ?? "";
+    const isAuthRoute = url.includes("/auth/login") || url.includes("/auth/refresh") || url.includes("/auth/register");
 
-    if (
-      error.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._retry &&
-      !isAuthRoute
-    ) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthRoute) {
       originalRequest._retry = true;
       const newToken = await refreshAccessToken();
       if (newToken) {
@@ -68,18 +58,12 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  },
+  }
 );
 
-export function extractErrorMessage(
-  error: unknown,
-  fallback = 'Something went wrong. Please try again.',
-): string {
+export function extractErrorMessage(error: unknown, fallback = "Something went wrong. Please try again."): string {
   if (axios.isAxiosError(error)) {
-    return (
-      (error.response?.data as { message?: string } | undefined)?.message ??
-      fallback
-    );
+    return (error.response?.data as { message?: string } | undefined)?.message ?? fallback;
   }
   return fallback;
 }

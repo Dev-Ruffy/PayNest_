@@ -1,18 +1,11 @@
-'use client';
+"use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-  ReactNode,
-} from 'react';
-import { useRouter } from 'next/navigation';
-import { api, refreshAccessToken } from '@/lib/axios';
-import { tokenStore } from '@/lib/tokenStore';
-import { decodeAccessToken } from '@/lib/jwt';
-import { AuthUser, Role, SessionState } from '@/types';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { api, refreshAccessToken } from "@/lib/axios";
+import { tokenStore } from "@/lib/tokenStore";
+import { decodeAccessToken } from "@/lib/jwt";
+import { AuthUser, Role, SessionState } from "@/types";
 
 interface AuthContextValue extends SessionState {
   setSession: (accessToken: string, user: AuthUser | null) => void;
@@ -22,12 +15,12 @@ interface AuthContextValue extends SessionState {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const DASHBOARD_PATH: Record<Role, string> = {
-  DEVELOPER: '/dashboard/developer',
-  ADMIN: '/dashboard/admin',
-  ACCOUNTANT: '/dashboard/accountant',
-  HOUSEMASTER: '/dashboard/housemaster',
-  STUDENT: '/dashboard/student',
-  SELLER: '/dashboard/seller',
+  DEVELOPER: "/dashboard/developer",
+  ADMIN: "/dashboard/admin",
+  ACCOUNTANT: "/dashboard/accountant",
+  HOUSEMASTER: "/dashboard/housemaster",
+  STUDENT: "/dashboard/student",
+  SELLER: "/dashboard/seller",
 };
 
 export function dashboardPathFor(role: Role) {
@@ -45,11 +38,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = tokenStore.subscribe(() => {
-      setState((prev) => ({
-        ...prev,
-        accessToken: tokenStore.get(),
-        role: tokenStore.getRole(),
-      }));
+      setState((prev) => {
+        const accessToken = tokenStore.get();
+        const role = tokenStore.getRole();
+        if (prev.accessToken === accessToken && prev.role === role) return prev;
+        return { ...prev, accessToken, role };
+      });
     });
     return unsubscribe;
   }, []);
@@ -76,40 +70,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setSession = useCallback(
-    (accessToken: string, user: AuthUser | null) => {
-      const decoded = decodeAccessToken(accessToken);
-      if (decoded) tokenStore.set(accessToken, decoded.role);
-      setState({
-        accessToken,
-        role: decoded?.role ?? null,
-        user,
-        isHydrating: false,
-      });
-    },
-    [],
-  );
+  const setSession = useCallback((accessToken: string, user: AuthUser | null) => {
+    const decoded = decodeAccessToken(accessToken);
+    if (decoded) tokenStore.set(accessToken, decoded.role);
+    setState({ accessToken, role: decoded?.role ?? null, user, isHydrating: false });
+  }, []);
 
   const logout = useCallback(async () => {
     try {
-      await api.post('/auth/logout');
+      await api.post("/auth/logout");
     } catch {
       // ignore - we clear local state regardless
     }
     tokenStore.clear();
     setState({ accessToken: null, role: null, user: null, isHydrating: false });
-    router.push('/');
+    router.push("/");
   }, [router]);
 
-  return (
-    <AuthContext.Provider value={{ ...state, setSession, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = useMemo(() => ({ ...state, setSession, logout }), [state, setSession, logout]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 }
