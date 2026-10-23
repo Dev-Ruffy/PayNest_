@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Search, ShieldCheck, Wallet, GraduationCap, Users, Store, ChevronLeft } from "lucide-react";
@@ -19,9 +20,21 @@ const roleCards = [
   { role: "seller", label: "Tuck Shop Seller", icon: Store, canSignUp: true },
 ];
 
-export default function JoinSchoolPage() {
+function JoinSchoolContent() {
+  // Coming back from a login page brings the school along in the address, so the role screen shows straight away.
+  const urlParams = useSearchParams();
+  const presetId = urlParams.get("schoolId");
+  const presetName = urlParams.get("schoolName");
+
   const [search, setSearch] = useState("");
-  const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
+  const [selectedSchool, setSelectedSchool] = useState<School | null>(() =>
+    presetId && presetName ? { id: presetId, name: presetName, email: "" } : null
+  );
+
+  const chooseDifferentSchool = () => {
+    setSelectedSchool(null);
+    if (typeof window !== "undefined") window.history.replaceState(null, "", "/join-school");
+  };
 
   const { data: schools, isLoading } = useQuery({
     queryKey: ["active-schools"],
@@ -75,7 +88,7 @@ export default function JoinSchoolPage() {
   return (
     <AuthLayout title={selectedSchool.name} subtitle="Choose your role to continue." wide>
       <button
-        onClick={() => setSelectedSchool(null)}
+        onClick={chooseDifferentSchool}
         className="mb-5 flex items-center gap-1 text-sm text-slate-400 hover:text-ink transition-colors"
       >
         <ChevronLeft className="h-4 w-4" /> Choose a different school
@@ -118,5 +131,13 @@ export default function JoinSchoolPage() {
         })}
       </div>
     </AuthLayout>
+  );
+}
+
+export default function JoinSchoolPage() {
+  return (
+    <Suspense>
+      <JoinSchoolContent />
+    </Suspense>
   );
 }

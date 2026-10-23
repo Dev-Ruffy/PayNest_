@@ -187,7 +187,12 @@ function LoginContent() {
   }
 
   return (
-    <AuthLayout title={`${meta.label} login`} subtitle={schoolName || undefined}>
+    <AuthLayout
+      title={`${meta.label} login`}
+      subtitle={schoolName || undefined}
+      backHref={`/join-school?schoolId=${schoolId}&schoolName=${encodeURIComponent(schoolName)}`}
+      backLabel="Back to login options"
+    >
       {meta.role === "HOUSEMASTER" && <HousemasterForm schoolId={schoolId} />}
       {meta.role === "STUDENT" && <StudentForm schoolId={schoolId} />}
       {(meta.role === "ADMIN" || meta.role === "ACCOUNTANT" || meta.role === "SELLER") && (

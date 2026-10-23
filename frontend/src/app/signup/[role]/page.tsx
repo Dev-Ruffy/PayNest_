@@ -57,7 +57,12 @@ function StaffSignupContent() {
   }
 
   return (
-    <AuthLayout title={`${LABELS[role]} sign up`} subtitle={`${schoolName} - pending your Admin's approval after submission.`}>
+    <AuthLayout
+      title={`${LABELS[role]} sign up`}
+      subtitle={`${schoolName} - pending your Admin's approval after submission.`}
+      backHref={`/join-school?schoolId=${schoolId}&schoolName=${encodeURIComponent(schoolName)}`}
+      backLabel="Back to login options"
+    >
       <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
         <div>
           <Label>Full name</Label>
