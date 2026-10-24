@@ -17,7 +17,9 @@ export const batchController = {
 
   list: asyncHandler(async (req, res) => {
     const page = Number(req.query.page ?? 1);
-    sendSuccess(res, await batchService.listForHousemaster(schoolIdOf(req), req.auth!.id, page));
+    const allowed = ["drafts", "completed", "cancelled", "history"] as const;
+    const status = allowed.find((value) => value === req.query.status);
+    sendSuccess(res, await batchService.listForHousemaster({ schoolId: schoolIdOf(req), status, page }));
   }),
 
   detail: asyncHandler(async (req, res) => {

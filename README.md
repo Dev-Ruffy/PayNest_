@@ -18,20 +18,21 @@ paynest/
 └── frontend/    Next.js 14 App Router site — landing page, auth flows, 6 dashboards
 ```
 
-| Area | Status |
-|---|---|
-| Database schema (Prisma) | ✅ Complete — all entities, relations, indexes |
-| Auth (school onboarding, 6 login types, refresh tokens) | ✅ Complete |
-| Developer dashboard (schools, approvals, transactions, logs, system) | ✅ Complete |
-| Admin dashboard (students, staff, approvals, audit log, settings) | ✅ Complete |
-| Accountant / Housemaster dashboards (create/credit students, history) | ✅ Complete |
-| Seller dashboard (PIN-verified purchase, receipt, history) | ✅ Complete |
-| Student dashboard (wallet, transactions, profile) | ✅ Complete |
-| Landing page (Hero/About/Features/How-it-works/FAQ) | ✅ Complete |
-| Automated tests | ✅ Backend unit tests (Jest). Frontend verified via production build. |
+| Area                                                                  | Status                                                                |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Database schema (Prisma)                                              | ✅ Complete — all entities, relations, indexes                        |
+| Auth (school onboarding, 6 login types, refresh tokens)               | ✅ Complete                                                           |
+| Developer dashboard (schools, approvals, transactions, logs, system)  | ✅ Complete                                                           |
+| Admin dashboard (students, staff, approvals, audit log, settings)     | ✅ Complete                                                           |
+| Accountant / Housemaster dashboards (create/credit students, history) | ✅ Complete                                                           |
+| Seller dashboard (PIN-verified purchase, receipt, history)            | ✅ Complete                                                           |
+| Student dashboard (wallet, transactions, profile)                     | ✅ Complete                                                           |
+| Landing page (Hero/About/Features/How-it-works/FAQ)                   | ✅ Complete                                                           |
+| Automated tests                                                       | ✅ Backend unit tests (Jest). Frontend verified via production build. |
 
 **A note on verification:** this project was built and validated inside a sandboxed environment without
 open internet access to `binaries.prisma.sh` or `fonts.googleapis.com`. That means:
+
 - `npx prisma generate` could not download its query-engine binary here, so the Prisma-typed parts of
   the backend could only be checked with a type stub rather than the real generated client.
 - The frontend's Google Fonts (`next/font/google`) couldn't be fetched at build time here.
@@ -62,15 +63,15 @@ cp .env.example .env
 
 Edit `.env`:
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | Long random strings — `openssl rand -base64 48` |
-| `PIN_ENCRYPTION_KEY` | 32+ char secret used to AES-encrypt student PINs for Admin recovery — `openssl rand -base64 32` |
-| `SMTP_*` | Your email provider's SMTP credentials |
-| `DEVELOPER_EMAIL` / `DEVELOPER_PASSCODE` | Credentials for the Developer login (defaults to `developer@paynest.app` / `827589`) |
-| `DEVELOPER_NOTIFY_EMAIL` | Where new-school notification emails are sent |
-| `CORS_ORIGINS` | Comma-separated list of allowed frontend origins |
+| Variable                                   | Description                                                                                     |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                             | PostgreSQL connection string                                                                    |
+| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | Long random strings — `openssl rand -base64 48`                                                 |
+| `PIN_ENCRYPTION_KEY`                       | 32+ char secret used to AES-encrypt student PINs for Admin recovery — `openssl rand -base64 32` |
+| `SMTP_*`                                   | Your email provider's SMTP credentials                                                          |
+| `DEVELOPER_EMAIL` / `DEVELOPER_PASSCODE`   | Credentials for the Developer login (defaults to `developer@paynest.app` / `827589`)            |
+| `DEVELOPER_NOTIFY_EMAIL`                   | Where new-school notification emails are sent                                                   |
+| `CORS_ORIGINS`                             | Comma-separated list of allowed frontend origins                                                |
 
 Then set up the database:
 
@@ -81,6 +82,7 @@ npm run seed              # bootstraps the Developer account + a demo school
 ```
 
 The seed script prints demo credentials, including:
+
 - **Admin:** `admin.brightfield` / `Password123!`
 - **Accountant:** `accountant.brightfield` / `Password123!`
 - **Seller:** `seller.brightfield` / `Password123!`
@@ -112,8 +114,8 @@ cp .env.local.example .env.local
 
 Edit `.env.local`:
 
-| Variable | Description |
-|---|---|
+| Variable              | Description                                                   |
+| --------------------- | ------------------------------------------------------------- |
 | `NEXT_PUBLIC_API_URL` | Base URL of the backend API, e.g. `http://localhost:4000/api` |
 
 Start the dev server:
@@ -156,9 +158,9 @@ nullable `deletedAt` column, nothing gets deleted or rewritten.
   is guarded by `requireAuth` + `requireRole`, and the frontend mirrors this with `<RequireRole>`.
 - **Student PINs:** students no longer choose a PIN at account creation — Accountants and
   Housemasters create student records with no PIN at all. The PIN a student types into their
-  *first* tuck shop purchase becomes their permanent PIN for every purchase and login after that
+  _first_ tuck shop purchase becomes their permanent PIN for every purchase and login after that
   (`transaction.service.ts`'s `purchase()` handles this branching). Once set, it's hashed with
-  bcrypt for authentication, and *separately* AES-256-GCM encrypted so an Admin or Housemaster can
+  bcrypt for authentication, and _separately_ AES-256-GCM encrypted so an Admin or Housemaster can
   recover it if a student forgets it — Accountants deliberately do not have this ability. Every
   PIN view is written to the audit log.
 - **Money movement:** `transaction.service.ts` is the single source of truth for wallet credits and
@@ -178,16 +180,19 @@ nullable `deletedAt` column, nothing gets deleted or rewritten.
 ## 6. Deployment
 
 ### Backend → Render or Railway
+
 1. Create a PostgreSQL instance (Render/Railway both offer managed Postgres).
 2. Create a new Web Service pointing at `backend/`, build command `npm install && npm run build && npx prisma migrate deploy`, start command `npm start`.
 3. Set all `.env` variables from the table above in the service's environment settings.
 
 ### Frontend → Vercel
+
 1. Import the repo, set the root directory to `frontend/`.
 2. Set `NEXT_PUBLIC_API_URL` to your deployed backend's URL (e.g. `https://paynest-api.onrender.com/api`).
 3. Deploy — Vercel auto-detects Next.js.
 
 ### Post-deploy
+
 - Update `CORS_ORIGINS` on the backend to include your production frontend URL.
 - Update `COOKIE_DOMAIN` and set `COOKIE_SECURE=true` once served over HTTPS.
 

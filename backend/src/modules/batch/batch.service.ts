@@ -22,6 +22,8 @@ function recomputeOrderTotal(items: { lineTotal: unknown }[]): number {
   return items.reduce((sum, item) => sum + Number(item.lineTotal), 0);
 }
 
+export type BatchListFilter = "drafts" | "completed" | "cancelled" | "history";
+
 interface ProductRow {
   id: string;
   name: string;
@@ -42,15 +44,36 @@ export const batchService = {
     return batch;
   },
 
-  async listForHousemaster(schoolId: string, createdById: string, page = 1, pageSize = 20) {
-    const where = { schoolId, createdById };
+  /**
+   * Batches at the school, newest first. Housemasters share one school login and any of them can open,
+   * edit or confirm a school batch, so every Housemaster sees every batch, with who created it.
+   * `status` narrows the list: drafts, completed (including any still processing), cancelled,
+   * or history (everything that is no longer a draft). Left out, it returns every status.
+   */
+  async listForHousemaster(params: { schoolId: string; status?: BatchListFilter; page?: number; pageSize?: number }) {
+    const page = params.page ?? 1;
+    const pageSize = params.pageSize ?? 20;
+
+    const statuses =
+      params.status === "drafts"
+        ? [BatchStatus.DRAFT]
+        : params.status === "completed"
+          ? [BatchStatus.COMPLETED, BatchStatus.PROCESSING]
+          : params.status === "cancelled"
+            ? [BatchStatus.CANCELLED]
+            : params.status === "history"
+              ? [BatchStatus.COMPLETED, BatchStatus.PROCESSING, BatchStatus.CANCELLED]
+              : undefined;
+
+    const where = { schoolId: params.schoolId, ...(statuses ? { status: { in: statuses } } : {}) };
+
     const [items, total] = await Promise.all([
       prisma.batch.findMany({
         where,
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { _count: { select: { orders: true } } },
+        include: { createdBy: { select: { fullName: true } }, _count: { select: { orders: true } } },
       }),
       prisma.batch.count({ where }),
     ]);

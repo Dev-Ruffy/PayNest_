@@ -153,6 +153,7 @@ export interface Batch {
   studentCount: number;
   confirmedAt: string | null;
   createdAt: string;
+  createdById?: string;
   createdBy?: { fullName: string };
   orders?: BatchOrder[];
   liveTotal?: number;
