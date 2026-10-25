@@ -155,6 +155,8 @@ export interface Batch {
   createdAt: string;
   createdById?: string;
   createdBy?: { fullName: string };
+  confirmedById?: string | null;
+  confirmedBy?: { fullName: string } | null;
   orders?: BatchOrder[];
   liveTotal?: number;
   liveStudentCount?: number;

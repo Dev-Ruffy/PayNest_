@@ -102,8 +102,10 @@ export function BatchResultView({
             <Badge tone={processed ? "emerald" : "slate"}>{batch.status}</Badge>
           </div>
           <CardDescription>
-            {batch.confirmedAt ? `Processed ${formatDate(batch.confirmedAt)}` : `Created ${formatDate(batch.createdAt)}`}
-            {batch.createdBy ? ` by ${batch.createdBy.fullName}` : ""}
+            {`Created ${formatDate(batch.createdAt)}${batch.createdBy ? ` by ${batch.createdBy.fullName}` : ""}`}
+            {batch.confirmedAt
+              ? ` · Completed ${formatDate(batch.confirmedAt)}${batch.confirmedBy ? ` by ${batch.confirmedBy.fullName}` : ""}`
+              : ""}
           </CardDescription>
         </CardHeader>
         <CardContent>

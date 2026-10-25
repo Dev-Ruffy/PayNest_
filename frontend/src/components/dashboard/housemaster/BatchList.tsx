@@ -88,6 +88,13 @@ export function BatchList({
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const createdBy = (b: Batch) => (b.createdById && b.createdById === user?.id ? "You" : b.createdBy?.fullName ?? "-");
+  // Who clicked Confirm. Blank for drafts and discarded batches, since nothing was completed.
+  const completedBy = (b: Batch) => {
+    if (b.status === "DRAFT" || b.status === "CANCELLED") return "-";
+    const name = b.confirmedBy?.fullName;
+    if ((b.confirmedById && b.confirmedById === user?.id) || (name && name === user?.fullName)) return "You";
+    return name ?? "-";
+  };
 
   const columns = [
     {
@@ -105,6 +112,7 @@ export function BatchList({
     { header: "Students", accessor: (b: Batch) => b._count?.orders ?? b.studentCount },
     ...(mode === "history"
       ? [
+          { header: "Completed by", accessor: (b: Batch) => completedBy(b) },
           {
             header: "Total charged",
             accessor: (b: Batch) => (b.status === "COMPLETED" ? <span className="font-mono">{formatCurrency(b.totalAmount)}</span> : "-"),

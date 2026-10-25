@@ -30,6 +30,32 @@ interface ProductRow {
   price: unknown;
 }
 
+/**
+ * Fills in `confirmedBy` for completed batches that were confirmed before it was recorded on the batch,
+ * using whoever the first successful charge in the batch was recorded under. Batches confirmed from now on
+ * carry it directly. A batch where nobody was charged and nothing was recorded stays blank.
+ */
+async function withConfirmedBy<T extends { id: string; status: BatchStatus; confirmedBy?: { fullName: string } | null }>(
+  batches: T[]
+): Promise<T[]> {
+  const missing = batches.filter((b) => b.status === BatchStatus.COMPLETED && !b.confirmedBy).map((b) => b.id);
+  if (missing.length === 0) return batches;
+
+  const rows = (await prisma.batchOrder.findMany({
+    where: { batchId: { in: missing }, status: BatchOrderStatus.COMPLETED, transactionId: { not: null } },
+    select: { batchId: true, transaction: { select: { createdBy: { select: { fullName: true } } } } },
+    distinct: ["batchId"],
+  })) as { batchId: string; transaction: { createdBy: { fullName: string } | null } | null }[];
+
+  const names = new Map<string, string>();
+  for (const row of rows) {
+    const name = row.transaction?.createdBy?.fullName;
+    if (name) names.set(row.batchId, name);
+  }
+
+  return batches.map((b) => (names.has(b.id) ? ({ ...b, confirmedBy: { fullName: names.get(b.id) as string } } as T) : b));
+}
+
 export const batchService = {
   async createBatch(params: { schoolId: string; createdById: string; label?: string }) {
     const batch = await prisma.batch.create({
@@ -73,11 +99,15 @@ export const batchService = {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { createdBy: { select: { fullName: true } }, _count: { select: { orders: true } } },
+        include: {
+          createdBy: { select: { fullName: true } },
+          confirmedBy: { select: { fullName: true } },
+          _count: { select: { orders: true } },
+        },
       }),
       prisma.batch.count({ where }),
     ]);
-    return { items, total, page, pageSize };
+    return { items: await withConfirmedBy(items), total, page, pageSize };
   },
 
   async listForSchool(schoolId: string, page = 1, pageSize = 20) {
@@ -101,12 +131,14 @@ export const batchService = {
       include: {
         orders: { include: ORDER_INCLUDE, orderBy: { createdAt: "asc" } },
         createdBy: { select: { fullName: true } },
+        confirmedBy: { select: { fullName: true } },
       },
     });
     if (!batch) throw ApiError.notFound("Batch not found.");
 
+    const [withConfirmer] = await withConfirmedBy([batch]);
     const liveTotal = batch.orders.reduce((sum: number, o: { totalAmount: unknown }) => sum + Number(o.totalAmount), 0);
-    return { ...batch, liveTotal, liveStudentCount: batch.orders.length };
+    return { ...withConfirmer, liveTotal, liveStudentCount: batch.orders.length };
   },
 
   async addStudents(params: { schoolId: string; batchId: string; studentIds: string[] }) {
@@ -352,7 +384,7 @@ export const batchService = {
     // Atomic claim - the single guard against double-submission.
     const claimed = await prisma.batch.updateMany({
       where: { id: batch.id, status: BatchStatus.DRAFT },
-      data: { status: BatchStatus.PROCESSING },
+      data: { status: BatchStatus.PROCESSING, confirmedById: params.actorId },
     });
     if (claimed.count !== 1) {
       throw ApiError.conflict("This batch has already been processed or is currently being processed.");
@@ -360,7 +392,7 @@ export const batchService = {
 
     const seller = await prisma.user.findFirst({ where: { schoolId: params.schoolId, role: Role.SELLER } });
     if (!seller) {
-      await prisma.batch.update({ where: { id: batch.id }, data: { status: BatchStatus.DRAFT } });
+      await prisma.batch.update({ where: { id: batch.id }, data: { status: BatchStatus.DRAFT, confirmedById: null } });
       throw ApiError.badRequest("This school doesn't have a Tuck Shop Seller yet - add one before confirming a batch.");
     }
 
